@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +48,37 @@ public class VehiculoService {
                 .build();
 
         return mapear(vehiculoRepository.save(nuevo));
+    }
+
+    @Transactional(readOnly = true)
+    public List<VehiculoResponseDTO> listarPorPropietario(Long idPropietario) {
+        return vehiculoRepository.findByPropietarioIdPropietario(idPropietario)
+                .stream()
+                .filter(v -> v.getEstado() == EstadoGeneral.ACTIVO)
+                .map(this::mapear)
+                .toList();
+    }
+
+    @Transactional
+    public void cambiarPin(Long idVehiculo, String nuevoPin) {
+        Vehiculo vehiculo = vehiculoRepository.findById(idVehiculo)
+                .orElseThrow(() -> new IllegalArgumentException("Error: Vehículo no encontrado."));
+
+        if (vehiculo.getEstado() == EstadoGeneral.INACTIVO) {
+            throw new IllegalArgumentException("Error: No se puede cambiar el PIN de un vehículo inactivo.");
+        }
+
+        vehiculo.setPinSeguridad(passwordEncoder.encode(nuevoPin));
+        vehiculoRepository.save(vehiculo);
+    }
+
+    @Transactional
+    public void darDeBaja(Long idVehiculo) {
+        Vehiculo vehiculo = vehiculoRepository.findById(idVehiculo)
+                .orElseThrow(() -> new IllegalArgumentException("Error: Vehículo no encontrado."));
+
+        vehiculo.setEstado(EstadoGeneral.INACTIVO);
+        vehiculoRepository.save(vehiculo);
     }
 
     private VehiculoResponseDTO mapear(Vehiculo v) {

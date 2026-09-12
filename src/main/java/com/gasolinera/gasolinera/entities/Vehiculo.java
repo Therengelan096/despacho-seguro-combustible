@@ -21,18 +21,18 @@ public class Vehiculo {
     @Column(name = "id_nfc", unique = true, nullable = false, length = 100)
     private String idNfc;
 
-    @Column(name = "codigo_placa", unique = true, nullable = false, length = 20)
+    @Column(name = "codigo_placa", unique = true, nullable = false, length = 30)
     private String codigoPlaca;
 
     @Column(name = "pin_seguridad", nullable = false)
     private String pinSeguridad;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, length = 20)
     private TipoVehiculo tipo;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 15)
+    @Column(nullable = false, length = 30)
     private EstadoGeneral estado;
 
     @ManyToOne(fetch = FetchType.LAZY)
