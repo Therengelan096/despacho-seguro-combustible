@@ -37,3 +37,4 @@ backend/.env
 
 # Hardware
 surtidorHardware/
+backend/src/main/resources/.env

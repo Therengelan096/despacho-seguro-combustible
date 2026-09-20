@@ -59,6 +59,14 @@ public class VehiculoService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+public List<VehiculoResponseDTO> listarTodos() {
+    return vehiculoRepository.findAll()
+            .stream()
+            .map(this::mapear)
+            .toList();
+}
+
     @Transactional
     public void cambiarPin(Long idVehiculo, String nuevoPin) {
         Vehiculo vehiculo = vehiculoRepository.findById(idVehiculo)

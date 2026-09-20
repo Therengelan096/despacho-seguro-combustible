@@ -30,6 +30,11 @@ public class VehiculoController {
         return ResponseEntity.ok(service.listarPorPropietario(idPropietario));
     }
 
+    @GetMapping()
+    public ResponseEntity<List<VehiculoResponseDTO>> listar() {
+    return ResponseEntity.ok(service.listarTodos());
+}
+
     @PatchMapping("/{idVehiculo}/pin")
     public ResponseEntity<Void> cambiarPin(@PathVariable Long idVehiculo, @Valid @RequestBody VehiculoPinDTO req) {
         service.cambiarPin(idVehiculo, req.nuevoPin());

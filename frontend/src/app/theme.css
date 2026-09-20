@@ -1,0 +1,43 @@
+/**
+ * theme.css
+ * Importa este archivo desde tu globals.css: @import "./theme.css";
+ * (o pega el bloque @theme dentro de tu globals.css si usas Tailwind v4 con @theme inline)
+ *
+ * Paleta "Estación": petróleo oscuro + ámbar de surtidor.
+ * No es un dashboard genérico: los tonos vienen de la señalética real
+ * de una gasolinera (metal, asfalto, mangueras, luces de precio).
+ */
+
+@theme {
+  /* Base — asfalto / noche de estación */
+  --color-estacion-950: #0c1416;
+  --color-estacion-900: #121c1f;
+  --color-estacion-800: #1b2a2e;
+  --color-estacion-700: #26383d;
+  --color-estacion-600: #3a5158;
+
+  /* Petróleo — paneles, nav, header */
+  --color-petroleo-700: #0f4d52;
+  --color-petroleo-600: #146770;
+  --color-petroleo-500: #1c8089;
+
+  /* Ámbar — surtidor, CTAs, alertas de bajo nivel */
+  --color-ambar-600: #e8590c;
+  --color-ambar-500: #f2801d;
+  --color-ambar-400: #f7a53f;
+  --color-ambar-300: #ffc845;
+
+  /* Neutros cálidos — contenido, tarjetas */
+  --color-arena-50: #f7f5f1;
+  --color-arena-100: #efece4;
+  --color-arena-200: #ddd7c9;
+
+  --color-riesgo-600: #c92a2a;
+  --color-exito-600: #2f9e44;
+
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --radius-panel: 1.25rem;
+}
