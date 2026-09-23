@@ -5,6 +5,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { propietarioSchema, PropietarioFormValues } from "@/schemas/propietario-shema";
 import { UserPlus, User, IdCard, Smartphone, MapPin } from "lucide-react";
 
+
+const Comunidad = [
+  { value: "CAJUATA", label: "CAJUATA" },
+  { value: "SIQUIMIRANI", label: "SIQUIMIRANI" },
+];
+
 interface PropietariosFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
@@ -48,7 +54,7 @@ export function PropietariosForm({ onSuccess, onCancel }: PropietariosFormProps)
       <form onSubmit={handleSubmit(onSubmit)} className="max-w-3xl mx-auto">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
 
-          {/* cabecera del formulario */}
+          
           <div className="bg-[#004a8e] px-8 py-6 flex items-center gap-4">
             <div className="bg-[#f5d000] p-3 rounded-xl shadow-lg shrink-0">
               <UserPlus className="text-[#004a8e]" size={24} />
@@ -59,7 +65,7 @@ export function PropietariosForm({ onSuccess, onCancel }: PropietariosFormProps)
             </div>
           </div>
 
-          {/* cuerpo del formulario */}
+          
           <div className="p-8">
             <h2 className="text-[#004a8e] font-bold border-b border-gray-100 pb-2 mb-5 flex items-center gap-2">
               <User size={16} /> Datos del propietario
@@ -103,10 +109,17 @@ export function PropietariosForm({ onSuccess, onCancel }: PropietariosFormProps)
               </Campo>
 
               <Campo label="Comunidad" error={errors.comunidad?.message} icon={<MapPin size={14} />}>
-                <input
+                <select
                   {...register("comunidad")}
                   className={inputClass(errors.comunidad)}
-                />
+                >
+                  <option value="">Seleccionar comunidad</option>
+                  {Comunidad.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
               </Campo>
             </div>
           </div>

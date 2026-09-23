@@ -16,6 +16,8 @@ import {
   Search,
   Check,
   X,
+  ShieldAlert,
+  Dices,
 } from "lucide-react";
 import { vehiculoSchema, VehiculoFormValues } from "@/schemas/vehiculo.schema";
 
@@ -35,6 +37,7 @@ interface Propietario {
 export function VehiculoForm() {
   const router = useRouter();
   const [scanning, setScanning] = useState(false);
+  const [errorNfc, setErrorNfc] = useState("");
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // --- selector de propietario ---
@@ -53,14 +56,14 @@ export function VehiculoForm() {
     formState: { errors, isSubmitting },
   } = useForm<VehiculoFormValues>({
     resolver: zodResolver(vehiculoSchema),
-    mode: "onChange", 
+    mode: "onChange",
   });
 
   const idNfc = watch("idNfc");
 
   async function abrirModalPropietarios() {
     setModalAbierto(true);
-    if (propietarios.length > 0) return; 
+    if (propietarios.length > 0) return;
 
     try {
       setCargandoPropietarios(true);
@@ -97,12 +100,35 @@ export function VehiculoForm() {
     );
   });
 
+  // Consulta el endpoint que ya tienes en el backend
+  // (GET /api/vehiculos/nfc/{idNfc}/disponible) para saber si esa
+  // tarjeta ya está vinculada a otro vehículo antes de aceptarla.
+  async function verificarDisponibilidadNfc(uid: string): Promise<boolean> {
+    const token = localStorage.getItem("token");
+    const response = await fetch(
+      `http://localhost:8080/api/vehiculos/nfc/${encodeURIComponent(uid)}/disponible`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    if (!response.ok) {
+      throw new Error("No se pudo verificar la disponibilidad de la tarjeta.");
+    }
+    const data = await response.json(); // { disponible: boolean }
+    return Boolean(data.disponible);
+  }
+
   function handleScan() {
     if (scanning) return;
-    
+
     setScanning(true);
+    setErrorNfc("");
     let intentos = 0;
-    const maxIntentos = 10; 
+    const maxIntentos = 15; // 15 intentos * 1.5s = 22.5 segundos de espera
 
     if (intervalRef.current) clearInterval(intervalRef.current);
 
@@ -114,21 +140,55 @@ export function VehiculoForm() {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, 
+            Authorization: `Bearer ${token}`,
           },
         });
 
-        
+        console.log(`[NFC Polling Intento ${intentos}] Status HTTP:`, response.status);
+
         if (response.status === 200) {
           const data = await response.json();
-          setValue("idNfc", data.uid, { shouldValidate: true });
-          
-          setScanning(false);
+          console.log("[NFC Polling] Datos recibidos de la API:", data);
+
+          // Extrae la clave soportando diferentes nombres de propiedad (uid, idNfc, codigo, etc.)
+          const scannedUid =
+            typeof data === "string"
+              ? data
+              : data?.uid || data?.idNfc || data?.codigo || data?.id;
+
+          if (!scannedUid) {
+            console.warn(
+              "[NFC Polling] Se recibió 200 OK pero el campo UID vino vacío o con un nombre no reconocido en:",
+              data
+            );
+            return; // Continúa esperando el siguiente intento
+          }
+
+          // Si obtuvimos un UID válido, detenemos la consulta continua
           if (intervalRef.current) clearInterval(intervalRef.current);
+
+          // --- Verificación y asignación ---
+          try {
+            const disponible = await verificarDisponibilidadNfc(scannedUid);
+            if (disponible) {
+              setValue("idNfc", scannedUid, { shouldValidate: true });
+              setErrorNfc("");
+            } else {
+              setValue("idNfc", "", { shouldValidate: true });
+              setErrorNfc(
+                `La tarjeta ${scannedUid} ya está asignada a otro vehículo. Usa otra tarjeta.`
+              );
+            }
+          } catch (verifErr) {
+            console.error("Error verificando disponibilidad del NFC:", verifErr);
+            setErrorNfc("No se pudo verificar la tarjeta. Intenta de nuevo.");
+          }
+
+          setScanning(false);
           return;
         }
 
-        
+        // Si se agota el número de intentos
         if (intentos >= maxIntentos) {
           setScanning(false);
           if (intervalRef.current) clearInterval(intervalRef.current);
@@ -140,7 +200,14 @@ export function VehiculoForm() {
         if (intervalRef.current) clearInterval(intervalRef.current);
         alert("Error de conexión con el servidor. Verifique que la API esté en ejecución.");
       }
-    }, 1500); 
+    }, 1500);
+  }
+
+  // Genera un PIN aleatorio de 4 dígitos (0000-9999, con ceros a la izquierda)
+  // y lo carga directamente en el campo, validándolo al instante.
+  function handleGenerarPin() {
+    const pin = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+    setValue("pinSeguridad", pin, { shouldValidate: true });
   }
 
   async function onSubmit(values: VehiculoFormValues) {
@@ -153,7 +220,7 @@ export function VehiculoForm() {
       idNfc: values.idNfc,
       codigoPlaca: values.codigoPlaca,
       pinSeguridad: values.pinSeguridad,
-      tipo: values.tipoAutomovil, 
+      tipo: values.tipoAutomovil,
       idPropietario: propietarioSeleccionado.idPropietario,
     };
 
@@ -242,11 +309,23 @@ export function VehiculoForm() {
                 <Nfc size={16} /> Tarjeta NFC
               </h2>
 
-              <div className="overflow-hidden rounded-2xl border-2 border-dashed border-[#004a8e]/25 bg-blue-50/40 p-6">
+              <div
+                className={`overflow-hidden rounded-2xl border-2 border-dashed p-6 transition-colors ${
+                  errorNfc ? "border-red-300 bg-red-50/40" : "border-[#004a8e]/25 bg-blue-50/40"
+                }`}
+              >
                 <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
-                  <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#004a8e]">
+                  <div
+                    className={`relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full ${
+                      errorNfc ? "bg-red-500" : "bg-[#004a8e]"
+                    }`}
+                  >
                     <AnimatePresence mode="wait">
-                      {idNfc ? (
+                      {errorNfc ? (
+                        <motion.div key="error" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+                          <ShieldAlert className="h-7 w-7 text-white" />
+                        </motion.div>
+                      ) : idNfc ? (
                         <motion.div
                           key="ok"
                           initial={{ scale: 0.6, opacity: 0 }}
@@ -275,7 +354,9 @@ export function VehiculoForm() {
 
                   <div className="flex-1">
                     <p className="font-bold text-gray-900">
-                      {idNfc
+                      {errorNfc
+                        ? "Tarjeta rechazada"
+                        : idNfc
                         ? "Tarjeta leída correctamente"
                         : scanning
                         ? "Esperando lectura, acerque la tarjeta..."
@@ -291,14 +372,14 @@ export function VehiculoForm() {
                     onClick={handleScan}
                     disabled={scanning}
                     className={`w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-black uppercase tracking-wider text-xs transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-70 ${
-                      idNfc
+                      idNfc && !errorNfc
                         ? "bg-white text-[#004a8e] border-2 border-[#004a8e] hover:bg-blue-50"
                         : "bg-[#f5d000] text-[#004a8e] hover:bg-[#e6c200] shadow-md"
                     }`}
                   >
                     {scanning ? (
                       "Buscando..."
-                    ) : idNfc ? (
+                    ) : idNfc && !errorNfc ? (
                       <>
                         <RotateCcw size={16} /> Volver a leer
                       </>
@@ -309,7 +390,12 @@ export function VehiculoForm() {
                     )}
                   </button>
                 </div>
-                {errors.idNfc && (
+                {errorNfc && (
+                  <p className="mt-3 text-xs font-semibold text-red-500 flex items-center gap-1.5">
+                    <ShieldAlert size={14} /> {errorNfc}
+                  </p>
+                )}
+                {errors.idNfc && !errorNfc && (
                   <p className="mt-3 text-xs font-semibold text-red-500">{errors.idNfc.message}</p>
                 )}
               </div>
@@ -347,19 +433,28 @@ export function VehiculoForm() {
                 </Campo>
 
                 <Campo label="PIN de seguridad" error={errors.pinSeguridad?.message}>
-                  <input
-                    placeholder="4 dígitos"
-                    inputMode="numeric"
-                    maxLength={4}
-                    {...register("pinSeguridad")}
-                    className={`${inputClass(errors.pinSeguridad)} font-mono tracking-[0.5em] text-center`}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      placeholder="4 dígitos"
+                      inputMode="numeric"
+                      maxLength={4}
+                      {...register("pinSeguridad")}
+                      className={`${inputClass(errors.pinSeguridad)} font-mono tracking-[0.5em] text-center`}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleGenerarPin}
+                      title="Generar PIN aleatorio"
+                      className="shrink-0 flex items-center justify-center gap-1.5 px-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-500 hover:bg-[#004a8e] hover:text-white hover:border-[#004a8e] transition-colors"
+                    >
+                      <Dices size={18} />
+                    </button>
+                  </div>
                 </Campo>
               </div>
             </div>
           </div>
 
-          {/* botones de accion */}
           <div className="flex justify-end gap-3 border-t border-gray-100 bg-gray-50 px-8 py-5">
             <button
               type="button"
