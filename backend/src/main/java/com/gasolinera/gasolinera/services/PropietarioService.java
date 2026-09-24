@@ -38,7 +38,7 @@ public class PropietarioService {
 
     @Transactional(readOnly = true)
     public List<PropietarioResponseDTO> listarActivos() {
-        return repository.findAllByEstado(EstadoGeneral.ACTIVO)
+        return repository.findAll()
                 .stream()
                 .map(this::mapear)
                 .toList();
@@ -52,29 +52,38 @@ public class PropietarioService {
 
     @Transactional
     public PropietarioResponseDTO actualizar(String ci, PropietarioUpdateDTO request) {
-        Propietario p = repository.findByCiAndEstado(ci, EstadoGeneral.ACTIVO)
+        Propietario p = repository.findByCi(ci)
                 .orElseThrow(() -> new IllegalArgumentException("Error: No se encontró el propietario para actualizar."));
 
         p.setNombre(request.nombre());
         p.setApellidoPaterno(request.apellidoPaterno());
         p.setApellidoMaterno(request.apellidoMaterno());
         p.setCelular(request.celular());
-        p.setComunidad(Comunidad.valueOf(request.comunidad().toUpperCase()));
 
         return mapear(repository.save(p));
     }
 
     @Transactional
     public void darDeBaja(String ci) {
-        Propietario p = repository.findByCiAndEstado(ci, EstadoGeneral.ACTIVO)
-                .orElseThrow(() -> new IllegalArgumentException("Error: El propietario no existe o ya está inactivo."));
+        Propietario p = repository.findByCi(ci)
+                .orElseThrow(() -> new IllegalArgumentException("Error: El propietario no existe."));
 
-        p.setEstado(EstadoGeneral.INACTIVO);
+        p.setEstado(p.getEstado() == EstadoGeneral.ACTIVO ? EstadoGeneral.INACTIVO : EstadoGeneral.ACTIVO);
         repository.save(p);
     }
 
     private PropietarioResponseDTO mapear(Propietario p) {
-        String nombre = p.getNombre() + " " + p.getApellidoPaterno() + (p.getApellidoMaterno() != null ? " " + p.getApellidoMaterno() : "");
-        return new PropietarioResponseDTO(p.getIdPropietario(), nombre.trim(), p.getCi(), p.getCelular(), p.getComunidad().name());
+        String nombreComp = p.getNombre() + " " + p.getApellidoPaterno() + (p.getApellidoMaterno() != null && !p.getApellidoMaterno().isEmpty() ? " " + p.getApellidoMaterno() : "");
+        return new PropietarioResponseDTO(
+                p.getIdPropietario(),
+                nombreComp.trim(),
+                p.getNombre(),
+                p.getApellidoPaterno(),
+                p.getApellidoMaterno(),
+                p.getCi(),
+                p.getCelular(),
+                p.getComunidad().name(),
+                p.getEstado().name()
+        );
     }
 }

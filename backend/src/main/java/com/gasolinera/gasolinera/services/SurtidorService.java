@@ -1,6 +1,7 @@
 package com.gasolinera.gasolinera.services;
 
 import com.gasolinera.gasolinera.dto.DespachoRequestDTO;
+import com.gasolinera.gasolinera.dto.PosResponseDTO;
 import com.gasolinera.gasolinera.dto.SurtidorRequestDTO;
 import com.gasolinera.gasolinera.entities.HistorialDespacho;
 import com.gasolinera.gasolinera.entities.Vehiculo;
@@ -31,7 +32,6 @@ public class SurtidorService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> autorizarDespacho(SurtidorRequestDTO request) {
-
         Vehiculo vehiculo = vehiculoRepository.findByIdNfc(request.uid())
                 .orElseThrow(() -> new SurtidorNoAutorizadoException("Tag NFC no registrado o vehículo inactivo"));
 
@@ -92,5 +92,39 @@ public class SurtidorService {
         historialRepository.save(historial);
 
         return Map.of("mensaje", "Despacho de " + request.litros() + "L registrado con éxito para " + vehiculo.getCodigoPlaca());
+    }
+
+    @Transactional(readOnly = true)
+    public PosResponseDTO consultarDatosPos(String uid) {
+        Vehiculo vehiculo = vehiculoRepository.findByIdNfc(uid)
+                .orElseThrow(() -> new IllegalArgumentException("Tag NFC no registrado en el sistema."));
+
+        double cupoMaximo = vehiculo.getTipo().name().equals("AUTOMOVIL") ? 40.0 : 20.0;
+
+        LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime inicioSemana = ahora.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).truncatedTo(ChronoUnit.DAYS);
+        LocalDateTime finSemana = inicioSemana.plusDays(7).minusNanos(1);
+
+        Double consumido = historialRepository.sumarLitrosPorVehiculoEnRango(vehiculo.getIdVehiculo(), inicioSemana, finSemana);
+        double cupoDisponible = Math.max(0.0, cupoMaximo - consumido);
+
+        Comunidad comunidadActiva = turnoSurtidorService.obtenerComunidadEnTurno();
+        String estadoTurno = "AUTORIZADO";
+
+        if (vehiculo.getEstado() != EstadoGeneral.ACTIVO || vehiculo.getPropietario().getEstado() != EstadoGeneral.ACTIVO) {
+            estadoTurno = "BLOQUEADO";
+        } else if (comunidadActiva != vehiculo.getPropietario().getComunidad()) {
+            estadoTurno = "FUERA_DE_TURNO";
+        } else if (cupoDisponible <= 0) {
+            estadoTurno = "CUPO_AGOTADO";
+        }
+
+        String propietarioNombre = vehiculo.getPropietario().getNombre() + " " + vehiculo.getPropietario().getApellidoPaterno();
+
+        return new PosResponseDTO(
+                uid, vehiculo.getCodigoPlaca(), vehiculo.getTipo().name(),
+                propietarioNombre, vehiculo.getPropietario().getComunidad().name(),
+                cupoMaximo, consumido, cupoDisponible, estadoTurno
+        );
     }
 }

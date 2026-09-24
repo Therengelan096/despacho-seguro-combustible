@@ -6,5 +6,6 @@ public record VehiculoResponseDTO(
         String tipo,
         Double cupoMaximo,
         String idNfc,
-        String nombrePropietario
+        String nombrePropietario,
+        String estado
 ) {}

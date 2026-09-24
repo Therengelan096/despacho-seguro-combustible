@@ -17,3 +17,17 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+app:
+  admin:
+    username: ${ADMIN_USERNAME}
+    password: ${ADMIN_PASSWORD}
+    nombre: ${ADMIN_NOMBRE}
+    apellido: ${ADMIN_APELLIDO}
+    ci: ${ADMIN_CI}
+  worker:
+    username: ${WORKER_USERNAME}
+    password: ${WORKER_PASSWORD}
+    nombre: ${WORKER_NOMBRE}
+    apellido: ${WORKER_APELLIDO}
+    ci: ${WORKER_CI}

@@ -7,6 +7,5 @@ public record PropietarioUpdateDTO(
         @NotBlank(message = "Nombre obligatorio") String nombre,
         @NotBlank(message = "Apellido paterno obligatorio") String apellidoPaterno,
         String apellidoMaterno,
-        @Size(max = 15) String celular,
-        @NotBlank(message = "Comunidad obligatoria") String comunidad
+        @Size(max = 15) String celular
 ) {}

@@ -2,6 +2,7 @@ package com.gasolinera.gasolinera.services;
 
 import com.gasolinera.gasolinera.dto.VehiculoRequestDTO;
 import com.gasolinera.gasolinera.dto.VehiculoResponseDTO;
+import com.gasolinera.gasolinera.dto.VehiculoUpdateDTO;
 import com.gasolinera.gasolinera.entities.Propietario;
 import com.gasolinera.gasolinera.entities.Vehiculo;
 import com.gasolinera.gasolinera.enums.EstadoGeneral;
@@ -50,6 +51,26 @@ public class VehiculoService {
         return mapear(vehiculoRepository.save(nuevo));
     }
 
+    @Transactional
+    public VehiculoResponseDTO actualizar(Long idVehiculo, VehiculoUpdateDTO request) {
+        Vehiculo vehiculo = vehiculoRepository.findById(idVehiculo)
+                .orElseThrow(() -> new IllegalArgumentException("Error: Vehículo no encontrado."));
+
+        if (!vehiculo.getCodigoPlaca().equalsIgnoreCase(request.codigoPlaca()) &&
+                vehiculoRepository.existsByCodigoPlaca(request.codigoPlaca())) {
+            throw new IllegalArgumentException("Error: La placa " + request.codigoPlaca() + " ya está registrada.");
+        }
+
+        Propietario propietario = propietarioRepository.findById(request.idPropietario())
+                .orElseThrow(() -> new IllegalArgumentException("Error: No se encontró al propietario."));
+
+        vehiculo.setCodigoPlaca(request.codigoPlaca().toUpperCase());
+        vehiculo.setTipo(request.tipo());
+        vehiculo.setPropietario(propietario);
+
+        return mapear(vehiculoRepository.save(vehiculo));
+    }
+
     @Transactional(readOnly = true)
     public List<VehiculoResponseDTO> listarPorPropietario(Long idPropietario) {
         return vehiculoRepository.findByPropietarioIdPropietario(idPropietario)
@@ -60,12 +81,12 @@ public class VehiculoService {
     }
 
     @Transactional(readOnly = true)
-public List<VehiculoResponseDTO> listarTodos() {
-    return vehiculoRepository.findAll()
-            .stream()
-            .map(this::mapear)
-            .toList();
-}
+    public List<VehiculoResponseDTO> listarTodos() {
+        return vehiculoRepository.findAll()
+                .stream()
+                .map(this::mapear)
+                .toList();
+    }
 
     @Transactional
     public void cambiarPin(Long idVehiculo, String nuevoPin) {
@@ -85,7 +106,7 @@ public List<VehiculoResponseDTO> listarTodos() {
         Vehiculo vehiculo = vehiculoRepository.findById(idVehiculo)
                 .orElseThrow(() -> new IllegalArgumentException("Error: Vehículo no encontrado."));
 
-        vehiculo.setEstado(EstadoGeneral.INACTIVO);
+        vehiculo.setEstado(vehiculo.getEstado() == EstadoGeneral.ACTIVO ? EstadoGeneral.INACTIVO : EstadoGeneral.ACTIVO);
         vehiculoRepository.save(vehiculo);
     }
 
@@ -99,7 +120,8 @@ public List<VehiculoResponseDTO> listarTodos() {
                 v.getTipo().name(),
                 limiteCupo,
                 v.getIdNfc(),
-                nombreProp.trim()
+                nombreProp.trim(),
+                v.getEstado().name()
         );
     }
 

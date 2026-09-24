@@ -32,16 +32,13 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(Customizer.withDefaults()) // Habilita la configuración CORS definida en el Bean corsConfigurationSource
+                .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/propietarios/**").permitAll()
-                        .requestMatchers("/api/vehiculos/**").permitAll()
                         .requestMatchers("/api/surtidor/**").permitAll()
                         .requestMatchers("/api/visor/**").permitAll()
-                        .requestMatchers("/api/lector/**").permitAll()
-                        .requestMatchers("/html/**", "/css/**", "/js/**", "/favicon.ico").permitAll()
+                        .requestMatchers("/api/lector/escanear").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -52,17 +49,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
-        // Permite conexiones desde cualquier origen (incluyendo localhost y tu IP 192.168.0.17)
+
         configuration.setAllowedOriginPatterns(List.of("*"));
-        
-        // Métodos HTTP permitidos
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        
-        // Encabezados permitidos (Authorization, Content-Type, etc.)
         configuration.setAllowedHeaders(List.of("*"));
-        
-        // Permite enviar credenciales como cookies o headers de autenticación
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

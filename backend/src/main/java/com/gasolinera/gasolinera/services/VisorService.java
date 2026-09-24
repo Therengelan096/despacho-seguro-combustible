@@ -25,7 +25,6 @@ public class VisorService {
             throw new IllegalArgumentException("Error: Credenciales incorrectas. El CI proporcionado no corresponde al dueño de este vehículo.");
         }
 
-
         double limiteCupo = (vehiculo.getTipo() == TipoVehiculo.AUTOMOVIL) ? 40.0 : 20.0;
 
         String nombreProp = vehiculo.getPropietario().getNombre() + " " + vehiculo.getPropietario().getApellidoPaterno();
@@ -36,7 +35,8 @@ public class VisorService {
                 vehiculo.getTipo().name(),
                 limiteCupo,
                 vehiculo.getIdNfc(),
-                nombreProp.trim()
+                nombreProp.trim(),
+                vehiculo.getEstado().name()
         );
     }
 }

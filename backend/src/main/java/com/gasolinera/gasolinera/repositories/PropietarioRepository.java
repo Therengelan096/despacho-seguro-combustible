@@ -12,6 +12,7 @@ import java.util.Optional;
 public interface PropietarioRepository extends JpaRepository<Propietario, Long> {
     boolean existsByCi(String ci);
     Optional<Propietario> findByCiAndEstado(String ci, EstadoGeneral estado);
+    Optional<Propietario> findByCi(String ci);
     List<Propietario> findAllByEstado(EstadoGeneral estado);
     long countByEstado(EstadoGeneral estado);
 }

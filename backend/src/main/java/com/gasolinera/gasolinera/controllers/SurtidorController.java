@@ -1,6 +1,7 @@
 package com.gasolinera.gasolinera.controllers;
 
 import com.gasolinera.gasolinera.dto.DespachoRequestDTO;
+import com.gasolinera.gasolinera.dto.PosResponseDTO;
 import com.gasolinera.gasolinera.dto.SurtidorRequestDTO;
 import com.gasolinera.gasolinera.services.SurtidorService;
 import jakarta.validation.Valid;
@@ -26,5 +27,10 @@ public class SurtidorController {
     @PostMapping("/confirmar")
     public ResponseEntity<Map<String, String>> confirmarDespacho(@Valid @RequestBody DespachoRequestDTO request) {
         return ResponseEntity.ok(surtidorService.confirmarDespacho(request));
+    }
+
+    @GetMapping("/pos/{uid}")
+    public ResponseEntity<PosResponseDTO> consultarPos(@PathVariable String uid) {
+        return ResponseEntity.ok(surtidorService.consultarDatosPos(uid));
     }
 }

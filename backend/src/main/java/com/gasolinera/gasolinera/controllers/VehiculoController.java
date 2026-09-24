@@ -3,6 +3,7 @@ package com.gasolinera.gasolinera.controllers;
 import com.gasolinera.gasolinera.dto.VehiculoPinDTO;
 import com.gasolinera.gasolinera.dto.VehiculoRequestDTO;
 import com.gasolinera.gasolinera.dto.VehiculoResponseDTO;
+import com.gasolinera.gasolinera.dto.VehiculoUpdateDTO;
 import com.gasolinera.gasolinera.services.VehiculoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,11 @@ public class VehiculoController {
     @PostMapping
     public ResponseEntity<VehiculoResponseDTO> registrar(@Valid @RequestBody VehiculoRequestDTO req) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.registrar(req));
+    }
+
+    @PutMapping("/{idVehiculo}")
+    public ResponseEntity<VehiculoResponseDTO> actualizar(@PathVariable Long idVehiculo, @Valid @RequestBody VehiculoUpdateDTO req) {
+        return ResponseEntity.ok(service.actualizar(idVehiculo, req));
     }
 
     @GetMapping("/propietario/{idPropietario}")

@@ -38,6 +38,10 @@ public class Usuario implements UserDetails {
     @Column(nullable = false, length = 15)
     private EstadoGeneral estado;
 
+    @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @JoinColumn(name = "id_empleado", referencedColumnName = "idEmpleado", nullable = false)
+    private Empleado empleado;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + rol.name()));
