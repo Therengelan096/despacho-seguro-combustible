@@ -1,9 +1,7 @@
 export interface Recarga {
-  id: string;
-  fecha: string;
+  idHistorial: number;
   placa: string;
   propietario: string;
-  litros: number;
-  monto: number;
-  estado: "completada" | "pendiente" | "rechazada";
+  litrosDespachados: number;
+  fechaHora: string;
 }

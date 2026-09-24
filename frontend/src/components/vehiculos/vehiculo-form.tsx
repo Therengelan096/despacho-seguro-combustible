@@ -5,34 +5,16 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "motion/react";
-import {
-  CreditCard,
-  Wifi,
-  CheckCircle2,
-  RotateCcw,
-  Car,
-  Nfc,
-  Users,
-  Search,
-  Check,
-  X,
-  ShieldAlert,
-  Dices,
-} from "lucide-react";
+import { CreditCard, Wifi, CheckCircle2, RotateCcw, Car, Nfc, Users, Search, Check, X, ShieldAlert, Dices, ChevronDown } from "lucide-react";
 import { vehiculoSchema, VehiculoFormValues } from "@/schemas/vehiculo.schema";
+import { apiFetch } from "@/lib/api";
+import { showSuccess, showError } from "@/lib/alerts";
+import { Propietario } from "@/types/propietario";
 
 const tipos = [
-  { value: "AUTOMOVIL", label: "Automovil" },
+  { value: "AUTOMOVIL", label: "Automóvil" },
   { value: "MOTOCICLETA", label: "Motocicleta" },
 ];
-
-interface Propietario {
-  idPropietario: number;
-  nombreCompleto: string;
-  ci: string;
-  celular?: string;
-  comunidad?: string;
-}
 
 export function VehiculoForm() {
   const router = useRouter();
@@ -40,47 +22,31 @@ export function VehiculoForm() {
   const [errorNfc, setErrorNfc] = useState("");
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- selector de propietario ---
   const [propietarios, setPropietarios] = useState<Propietario[]>([]);
   const [cargandoPropietarios, setCargandoPropietarios] = useState(false);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [propietarioSeleccionado, setPropietarioSeleccionado] = useState<Propietario | null>(null);
   const [errorPropietario, setErrorPropietario] = useState("");
+  const [openTipoSelect, setOpenTipoSelect] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<VehiculoFormValues>({
+  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<VehiculoFormValues>({
     resolver: zodResolver(vehiculoSchema),
     mode: "onChange",
   });
 
   const idNfc = watch("idNfc");
+  const tipoActual = watch("tipoAutomovil");
 
   async function abrirModalPropietarios() {
     setModalAbierto(true);
     if (propietarios.length > 0) return;
-
     try {
       setCargandoPropietarios(true);
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:8080/api/propietarios", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) throw new Error("No se pudo cargar la lista de propietarios");
-      const data = await response.json();
+      const data = await apiFetch("/propietarios");
       setPropietarios(data);
     } catch (err) {
-      console.error(err);
-      alert("No se pudo cargar la lista de propietarios");
+      showError("No se pudo cargar la lista de propietarios");
     } finally {
       setCargandoPropietarios(false);
     }
@@ -95,116 +61,56 @@ export function VehiculoForm() {
 
   const propietariosFiltrados = propietarios.filter((p) => {
     const termino = busqueda.toLowerCase();
-    return (
-      p.nombreCompleto?.toLowerCase().includes(termino) || p.ci?.includes(busqueda)
-    );
+    return p.nombreCompleto?.toLowerCase().includes(termino) || p.ci?.includes(busqueda);
   });
 
-  // Consulta el endpoint que ya tienes en el backend
-  // (GET /api/vehiculos/nfc/{idNfc}/disponible) para saber si esa
-  // tarjeta ya está vinculada a otro vehículo antes de aceptarla.
   async function verificarDisponibilidadNfc(uid: string): Promise<boolean> {
-    const token = localStorage.getItem("token");
-    const response = await fetch(
-      `http://localhost:8080/api/vehiculos/nfc/${encodeURIComponent(uid)}/disponible`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    if (!response.ok) {
-      throw new Error("No se pudo verificar la disponibilidad de la tarjeta.");
-    }
-    const data = await response.json(); // { disponible: boolean }
+    const data = await apiFetch(`/vehiculos/nfc/${encodeURIComponent(uid)}/disponible`);
     return Boolean(data.disponible);
   }
 
   function handleScan() {
     if (scanning) return;
-
     setScanning(true);
     setErrorNfc("");
     let intentos = 0;
-    const maxIntentos = 15; // 15 intentos * 1.5s = 22.5 segundos de espera
 
     if (intervalRef.current) clearInterval(intervalRef.current);
 
     intervalRef.current = setInterval(async () => {
       intentos++;
       try {
-        const token = localStorage.getItem("token");
-        const response = await fetch("http://localhost:8080/api/lector/ultimo", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const data = await apiFetch("/lector/ultimo");
+        const scannedUid = typeof data === "string" ? data : data?.uid || data?.idNfc || data?.codigo || data?.id;
 
-        console.log(`[NFC Polling Intento ${intentos}] Status HTTP:`, response.status);
-
-        if (response.status === 200) {
-          const data = await response.json();
-          console.log("[NFC Polling] Datos recibidos de la API:", data);
-
-          // Extrae la clave soportando diferentes nombres de propiedad (uid, idNfc, codigo, etc.)
-          const scannedUid =
-            typeof data === "string"
-              ? data
-              : data?.uid || data?.idNfc || data?.codigo || data?.id;
-
-          if (!scannedUid) {
-            console.warn(
-              "[NFC Polling] Se recibió 200 OK pero el campo UID vino vacío o con un nombre no reconocido en:",
-              data
-            );
-            return; // Continúa esperando el siguiente intento
-          }
-
-          // Si obtuvimos un UID válido, detenemos la consulta continua
-          if (intervalRef.current) clearInterval(intervalRef.current);
-
-          // --- Verificación y asignación ---
-          try {
-            const disponible = await verificarDisponibilidadNfc(scannedUid);
-            if (disponible) {
-              setValue("idNfc", scannedUid, { shouldValidate: true });
-              setErrorNfc("");
-            } else {
-              setValue("idNfc", "", { shouldValidate: true });
-              setErrorNfc(
-                `La tarjeta ${scannedUid} ya está asignada a otro vehículo. Usa otra tarjeta.`
-              );
-            }
-          } catch (verifErr) {
-            console.error("Error verificando disponibilidad del NFC:", verifErr);
-            setErrorNfc("No se pudo verificar la tarjeta. Intenta de nuevo.");
-          }
-
-          setScanning(false);
-          return;
-        }
-
-        // Si se agota el número de intentos
-        if (intentos >= maxIntentos) {
-          setScanning(false);
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          alert("Tiempo de espera agotado. Por favor, acerque la tarjeta al lector y vuelva a presionar el botón.");
-        }
-      } catch (err) {
-        console.error("Error consultando el lector NFC:", err);
-        setScanning(false);
+        if (!scannedUid) return;
         if (intervalRef.current) clearInterval(intervalRef.current);
-        alert("Error de conexión con el servidor. Verifique que la API esté en ejecución.");
+
+        try {
+          const disponible = await verificarDisponibilidadNfc(scannedUid);
+          if (disponible) {
+            setValue("idNfc", scannedUid, { shouldValidate: true });
+            setErrorNfc("");
+            showSuccess("Tarjeta vinculada", "La tarjeta NFC fue asignada correctamente.");
+          } else {
+            setValue("idNfc", "", { shouldValidate: true });
+            setErrorNfc(`La tarjeta ${scannedUid} ya está asignada.`);
+          }
+        } catch (verifErr) {
+          setErrorNfc("Error verificando disponibilidad.");
+        }
+        setScanning(false);
+        return;
+      } catch (err) {
+        if (intentos >= 15) {
+          setScanning(false);
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          showError("Tiempo de espera agotado. Acerque la tarjeta de nuevo.");
+        }
       }
     }, 1500);
   }
 
-  // Genera un PIN aleatorio de 4 dígitos (0000-9999, con ceros a la izquierda)
-  // y lo carga directamente en el campo, validándolo al instante.
   function handleGenerarPin() {
     const pin = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
     setValue("pinSeguridad", pin, { shouldValidate: true });
@@ -212,10 +118,9 @@ export function VehiculoForm() {
 
   async function onSubmit(values: VehiculoFormValues) {
     if (!propietarioSeleccionado) {
-      setErrorPropietario("Debes seleccionar un propietario para este vehículo.");
+      setErrorPropietario("Debes seleccionar un propietario.");
       return;
     }
-
     const payload = {
       idNfc: values.idNfc,
       codigoPlaca: values.codigoPlaca,
@@ -225,313 +130,196 @@ export function VehiculoForm() {
     };
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:8080/api/vehiculos", {
+      await apiFetch("/vehiculos", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(payload),
       });
-
-      if (!response.ok) {
-        const texto = await response.text().catch(() => "");
-        throw new Error(texto || "Error al registrar el vehículo");
-      }
-
-      alert("Vehículo registrado correctamente");
+      showSuccess("Registro Exitoso", "Vehículo guardado correctamente.");
       router.push("/dashboard/vehiculos");
-    } catch (err) {
-      console.error("Hubo un problema con la petición:", err);
-      alert(err instanceof Error ? err.message : "No se pudo guardar el vehículo");
+    } catch (err: any) {
+      showError(err.message || "Error al registrar el vehículo");
     }
   }
 
   return (
-    <section className="min-h-screen bg-gray-50 p-4 sm:p-8 font-sans antialiased">
-      <form onSubmit={handleSubmit(onSubmit)} className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-
-          {/* cabecera del formulario */}
-          <div className="bg-[#004a8e] px-8 py-6 flex items-center gap-4">
-            <div className="bg-[#f5d000] p-3 rounded-xl shadow-lg shrink-0">
-              <Car className="text-[#004a8e]" size={24} />
-            </div>
-            <div>
-              <p className="text-[11px] font-bold text-blue-200 uppercase tracking-widest">Nuevo registro</p>
-              <h1 className="text-xl font-black text-white uppercase tracking-tight">Vehículo y propietario</h1>
-            </div>
+    <div className="w-full">
+      <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-2xl shadow-card border border-slate-200 overflow-hidden">
+        <div className="bg-ypfb-blue px-6 py-5 flex items-center gap-4">
+          <div className="bg-ypfb-yellow p-2.5 rounded-xl shadow-lg shrink-0 text-ypfb-navy">
+            <Car size={22} />
           </div>
+          <div>
+            <p className="text-[10px] font-bold text-blue-200 uppercase tracking-widest font-sans">Nuevo registro</p>
+            <h1 className="text-lg font-black text-white uppercase tracking-tight font-display">Vehículo y Propietario</h1>
+          </div>
+        </div>
 
-          <div className="flex flex-col gap-8 p-8">
-            {/* propietario vinculado */}
+        {/* CONTENEDOR PRINCIPAL: ALINEACIÓN PERFECTA CON ITEMS-STRETCH */}
+        <div className="flex flex-col lg:flex-row gap-6 p-6 items-stretch">
+
+          <div className="flex-1 space-y-6 w-full flex flex-col justify-between">
             <div>
-              <h2 className="text-[#004a8e] font-bold border-b border-gray-100 pb-2 mb-3 flex items-center gap-2">
-                <Users size={16} /> Propietario
+              <h2 className="text-ypfb-blue font-bold border-b border-slate-100 pb-2 mb-3 flex items-center gap-2 font-display text-sm">
+                <Users size={16} /> 1. Propietario
               </h2>
-
               {propietarioSeleccionado ? (
-                <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-[#004a8e] flex items-center justify-center text-white font-black uppercase shrink-0">
+                    <div className="h-9 w-9 rounded-xl bg-ypfb-blue flex items-center justify-center text-white font-black uppercase shrink-0 font-display text-sm">
                       {propietarioSeleccionado.nombreCompleto.charAt(0)}
                     </div>
                     <div>
-                      <p className="font-bold text-gray-900 leading-tight">{propietarioSeleccionado.nombreCompleto}</p>
-                      <p className="text-[11px] font-mono text-gray-500 uppercase">CI: {propietarioSeleccionado.ci}</p>
+                      <p className="font-bold text-slate-900 leading-tight font-sans text-sm">{propietarioSeleccionado.nombreCompleto}</p>
+                      <p className="text-[10px] font-mono text-slate-500 uppercase tracking-tight">CI: {propietarioSeleccionado.ci}</p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={abrirModalPropietarios}
-                    className="px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider text-[#004a8e] bg-white border-2 border-[#004a8e] hover:bg-blue-50 transition-colors shrink-0"
-                  >
+                  <button type="button" onClick={abrirModalPropietarios} className="px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-ypfb-blue bg-white border border-ypfb-blue hover:bg-blue-50 transition-colors shrink-0 font-sans">
                     Cambiar
                   </button>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={abrirModalPropietarios}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 p-5 text-sm font-bold text-gray-500 hover:border-[#004a8e] hover:text-[#004a8e] hover:bg-blue-50/40 transition-all"
-                >
-                  <Users size={18} /> Seleccionar propietario existente
+                <button type="button" onClick={abrirModalPropietarios} className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 p-3 text-sm font-bold text-slate-500 hover:border-ypfb-blue hover:text-ypfb-blue hover:bg-blue-50/50 transition-all font-sans">
+                  <Users size={16} /> Buscar propietario
                 </button>
               )}
-              {errorPropietario && (
-                <p className="mt-2 text-[11px] font-semibold text-red-500">{errorPropietario}</p>
-              )}
+              {errorPropietario && <p className="mt-1.5 text-[10px] font-semibold text-red-500 font-sans">{errorPropietario}</p>}
             </div>
 
-            <div>
-              <h2 className="text-[#004a8e] font-bold border-b border-gray-100 pb-2 mb-3 flex items-center gap-2">
-                <Nfc size={16} /> Tarjeta NFC
-              </h2>
-
-              <div
-                className={`overflow-hidden rounded-2xl border-2 border-dashed p-6 transition-colors ${
-                  errorNfc ? "border-red-300 bg-red-50/40" : "border-[#004a8e]/25 bg-blue-50/40"
-                }`}
-              >
-                <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
-                  <div
-                    className={`relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full ${
-                      errorNfc ? "bg-red-500" : "bg-[#004a8e]"
-                    }`}
-                  >
-                    <AnimatePresence mode="wait">
-                      {errorNfc ? (
-                        <motion.div key="error" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-                          <ShieldAlert className="h-7 w-7 text-white" />
-                        </motion.div>
-                      ) : idNfc ? (
-                        <motion.div
-                          key="ok"
-                          initial={{ scale: 0.6, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                        >
-                          <CheckCircle2 className="h-7 w-7 text-white" />
-                        </motion.div>
-                      ) : (
-                        <motion.div
-                          key="wifi"
-                          animate={scanning ? { scale: [1, 1.15, 1] } : {}}
-                          transition={{ repeat: scanning ? Infinity : 0, duration: 1 }}
-                        >
-                          <CreditCard className="h-7 w-7 text-white" />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                    {scanning && (
-                      <motion.span
-                        className="absolute inset-0 rounded-full border-2 border-[#f5d000]"
-                        animate={{ scale: [1, 1.6], opacity: [0.6, 0] }}
-                        transition={{ repeat: Infinity, duration: 1.1 }}
-                      />
-                    )}
-                  </div>
-
-                  <div className="flex-1">
-                    <p className="font-bold text-gray-900">
-                      {errorNfc
-                        ? "Tarjeta rechazada"
-                        : idNfc
-                        ? "Tarjeta leída correctamente"
-                        : scanning
-                        ? "Esperando lectura, acerque la tarjeta..."
-                        : "Acerca la tarjeta NFC al lector"}
-                    </p>
-                    <p className="mt-0.5 font-mono text-lg tracking-widest text-[#004a8e]">
-                      {idNfc || "— — — — — — — —"}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleScan}
-                    disabled={scanning}
-                    className={`w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-black uppercase tracking-wider text-xs transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-70 ${
-                      idNfc && !errorNfc
-                        ? "bg-white text-[#004a8e] border-2 border-[#004a8e] hover:bg-blue-50"
-                        : "bg-[#f5d000] text-[#004a8e] hover:bg-[#e6c200] shadow-md"
-                    }`}
-                  >
-                    {scanning ? (
-                      "Buscando..."
-                    ) : idNfc && !errorNfc ? (
-                      <>
-                        <RotateCcw size={16} /> Volver a leer
-                      </>
-                    ) : (
-                      <>
-                        <Wifi size={16} /> Leer tarjeta
-                      </>
-                    )}
-                  </button>
-                </div>
-                {errorNfc && (
-                  <p className="mt-3 text-xs font-semibold text-red-500 flex items-center gap-1.5">
-                    <ShieldAlert size={14} /> {errorNfc}
-                  </p>
-                )}
-                {errors.idNfc && !errorNfc && (
-                  <p className="mt-3 text-xs font-semibold text-red-500">{errors.idNfc.message}</p>
-                )}
-              </div>
-            </div>
-
-            {/* datos del vehiculo */}
-            <div>
-              <h2 className="text-[#004a8e] font-bold border-b border-gray-100 pb-2 mb-3">
-                Datos del vehículo
-              </h2>
+            <div className="flex-1">
+              <h2 className="text-ypfb-blue font-bold border-b border-slate-100 pb-2 mb-3 font-display text-sm">2. Datos del vehículo</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Campo label="Código de placa" error={errors.codigoPlaca?.message}>
-                  <input
-                    placeholder="1234-ABC"
-                    {...register("codigoPlaca")}
-                    className={`${inputClass(errors.codigoPlaca)} font-mono`}
-                  />
+                  <input placeholder="1234-ABC" {...register("codigoPlaca")} className={`${inputClass(errors.codigoPlaca)} font-mono tracking-widest uppercase font-semibold`} />
                 </Campo>
 
-                <Campo label="Tipo de automovil" error={errors.tipoAutomovil?.message}>
-                  <select
-                    defaultValue=""
-                    {...register("tipoAutomovil")}
-                    className={inputClass(errors.tipoAutomovil)}
-                  >
-                    <option value="" disabled>
-                      Selecciona un tipo
-                    </option>
-                    {tipos.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </Campo>
-
-                <Campo label="PIN de seguridad" error={errors.pinSeguridad?.message}>
-                  <div className="flex gap-2">
-                    <input
-                      placeholder="4 dígitos"
-                      inputMode="numeric"
-                      maxLength={4}
-                      {...register("pinSeguridad")}
-                      className={`${inputClass(errors.pinSeguridad)} font-mono tracking-[0.5em] text-center`}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleGenerarPin}
-                      title="Generar PIN aleatorio"
-                      className="shrink-0 flex items-center justify-center gap-1.5 px-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-500 hover:bg-[#004a8e] hover:text-white hover:border-[#004a8e] transition-colors"
+                <Campo label="Tipo de vehículo" error={errors.tipoAutomovil?.message}>
+                  <div className="relative font-sans">
+                    <div
+                      onClick={() => setOpenTipoSelect(!openTipoSelect)}
+                      className={`w-full bg-slate-50 border rounded-xl p-2.5 text-sm outline-none cursor-pointer flex justify-between items-center transition-all ${
+                        errors.tipoAutomovil ? "border-red-300" : "border-slate-200 hover:border-ypfb-blue"
+                      }`}
                     >
-                      <Dices size={18} />
-                    </button>
+                      <span className={tipoActual ? "text-slate-800 font-semibold" : "text-slate-400"}>
+                        {tipos.find(t => t.value === tipoActual)?.label || "Seleccionar tipo"}
+                      </span>
+                      <ChevronDown size={16} className={`text-slate-400 transition-transform duration-200 ${openTipoSelect ? "rotate-180" : ""}`} />
+                    </div>
+
+                    {openTipoSelect && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setOpenTipoSelect(false)}></div>
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-100 rounded-xl shadow-xl overflow-hidden py-1">
+                          {tipos.map((t) => (
+                            <div
+                              key={t.value}
+                              onClick={() => {
+                                setValue("tipoAutomovil", t.value as any, { shouldValidate: true });
+                                setOpenTipoSelect(false);
+                              }}
+                              className={`px-4 py-2 text-sm cursor-pointer transition-colors ${
+                                tipoActual === t.value
+                                  ? "bg-blue-50 text-ypfb-blue font-bold"
+                                  : "text-slate-600 hover:bg-slate-50 hover:text-ypfb-blue"
+                              }`}
+                            >
+                              {t.label}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </Campo>
+
+                <div className="sm:col-span-2">
+                  <Campo label="PIN de seguridad" error={errors.pinSeguridad?.message}>
+                    <div className="flex gap-2">
+                      <input placeholder="4 dígitos" inputMode="numeric" maxLength={4} {...register("pinSeguridad")} className={`${inputClass(errors.pinSeguridad)} font-mono tracking-[0.8em] text-center font-bold w-full text-base`} />
+                      <button type="button" onClick={handleGenerarPin} className="shrink-0 flex items-center justify-center gap-1.5 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-ypfb-blue hover:text-white hover:border-ypfb-blue transition-colors font-sans font-bold text-[11px]"><Dices size={16} /> Generar</button>
+                    </div>
+                  </Campo>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 border-t border-gray-100 bg-gray-50 px-8 py-5">
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard/vehiculos")}
-              className="px-6 py-2.5 rounded-xl font-bold text-gray-500 bg-white border border-gray-200 hover:bg-gray-100 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-6 py-2.5 bg-[#004a8e] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#003566] transition-colors shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? "Guardando..." : "Guardar vehiculo"}
-            </button>
+          <div className="flex-1 lg:max-w-[320px] w-full flex flex-col">
+            <h2 className="text-ypfb-blue font-bold border-b border-slate-100 pb-2 mb-3 flex items-center gap-2 font-display text-sm">
+              <Nfc size={16} /> 3. Vinculación NFC
+            </h2>
+            {/* EL FLEX-1 AQUÍ OBLIGA A LA CAJA A ESTIRARSE HASTA ABAJO */}
+            <div className={`flex-1 rounded-2xl border-2 border-dashed p-6 flex flex-col items-center justify-center text-center transition-colors ${errorNfc ? "border-red-300 bg-red-50" : "border-slate-300 bg-slate-50"}`}>
+              <div className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full mb-3 ${errorNfc ? "bg-red-500" : "bg-ypfb-blue"}`}>
+                <AnimatePresence mode="wait">
+                  {errorNfc ? (
+                    <motion.div key="error" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+                      <ShieldAlert className="h-7 w-7 text-white" />
+                    </motion.div>
+                  ) : idNfc ? (
+                    <motion.div key="ok" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+                      <CheckCircle2 className="h-7 w-7 text-white" />
+                    </motion.div>
+                  ) : (
+                    <motion.div key="wifi" animate={scanning ? { scale: [1, 1.15, 1] } : {}} transition={{ repeat: scanning ? Infinity : 0, duration: 1 }}>
+                      <CreditCard className="h-7 w-7 text-white" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                {scanning && <motion.span className="absolute inset-0 rounded-full border-4 border-ypfb-yellow" animate={{ scale: [1, 1.6], opacity: [0.6, 0] }} transition={{ repeat: Infinity, duration: 1.1 }} />}
+              </div>
+
+              <p className="font-bold text-slate-900 font-sans text-sm">
+                {errorNfc ? "Tarjeta rechazada" : idNfc ? "Tarjeta vinculada" : scanning ? "Esperando escáner..." : "Acerca la tarjeta NFC"}
+              </p>
+              <p className="mt-1 mb-4 font-mono text-base tracking-widest text-ypfb-blue font-black">{idNfc || "— — — — —"}</p>
+
+              <button type="button" onClick={handleScan} disabled={scanning} className={`w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all disabled:opacity-70 font-sans mt-auto ${idNfc && !errorNfc ? "bg-white text-ypfb-blue border border-ypfb-blue hover:bg-blue-50" : "bg-ypfb-yellow text-ypfb-navy hover:bg-ypfb-gold shadow-md"}`}>
+                {scanning ? "Buscando..." : idNfc && !errorNfc ? <><RotateCcw size={14} /> Volver a leer</> : <><Wifi size={14} /> Iniciar Lectura</>}
+              </button>
+            </div>
           </div>
+        </div>
+
+        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4">
+          <button type="button" onClick={() => router.push("/dashboard/vehiculos")} className="px-5 py-2 rounded-xl font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 transition-colors text-xs uppercase tracking-wider font-sans">Cancelar</button>
+          <button type="submit" disabled={isSubmitting} className="px-5 py-2 bg-ypfb-blue text-white rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-ypfb-darkblue transition-colors shadow-md disabled:opacity-60 font-sans">
+            {isSubmitting ? "Guardando..." : "Guardar Vehículo"}
+          </button>
         </div>
       </form>
 
-      {/* modal para elegir propietario existente */}
       {modalAbierto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1B263B]/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-            <div className="bg-[#004a8e] p-5 text-white flex justify-between items-center shrink-0">
-              <h2 className="text-lg font-black uppercase flex items-center gap-2">
-                <Users size={20} className="text-[#f5d000]" /> Elegir propietario
-              </h2>
-              <button
-                type="button"
-                onClick={() => setModalAbierto(false)}
-                className="hover:bg-blue-800 p-1.5 rounded-lg transition-colors"
-              >
-                <X size={22} />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="bg-ypfb-navy p-4 text-white flex justify-between items-center shrink-0">
+              <h2 className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 font-display"><Users size={16} className="text-ypfb-yellow" /> Elegir propietario</h2>
+              <button onClick={() => setModalAbierto(false)} className="hover:bg-white/10 p-1.5 rounded-lg transition-colors"><X size={18} /></button>
             </div>
-
-            <div className="p-4 border-b border-gray-100 shrink-0">
+            <div className="p-3 border-b border-slate-100 shrink-0 bg-slate-50/50">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                <input
-                  type="text"
-                  autoFocus
-                  placeholder="Buscar por nombre o CI..."
-                  value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#f5d000] outline-none transition-all text-sm"
-                />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                <input type="text" autoFocus placeholder="Buscar por nombre o CI..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-ypfb-blue outline-none transition-all text-sm font-sans" />
               </div>
             </div>
-
             <div className="overflow-y-auto p-2">
               {cargandoPropietarios ? (
-                <p className="text-center py-10 font-bold text-gray-400 text-sm">Cargando propietarios...</p>
+                <p className="text-center py-8 font-bold text-slate-400 text-xs font-sans">Cargando base de datos...</p>
               ) : propietariosFiltrados.length === 0 ? (
-                <p className="text-center py-10 font-bold text-gray-400 text-sm">No se encontraron propietarios</p>
+                <p className="text-center py-8 font-bold text-slate-400 text-xs font-sans">No se encontraron resultados</p>
               ) : (
                 propietariosFiltrados.map((p) => {
                   const activo = propietarioSeleccionado?.idPropietario === p.idPropietario;
                   return (
-                    <button
-                      type="button"
-                      key={p.idPropietario}
-                      onClick={() => seleccionarPropietario(p)}
-                      className={`w-full flex items-center justify-between gap-3 p-3 rounded-xl transition-colors text-left ${
-                        activo ? "bg-blue-50" : "hover:bg-gray-50"
-                      }`}
-                    >
+                    <button type="button" key={p.idPropietario} onClick={() => seleccionarPropietario(p)} className={`w-full flex items-center justify-between gap-3 p-2.5 rounded-xl transition-colors text-left ${activo ? "bg-blue-50" : "hover:bg-slate-50"}`}>
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-gray-100 flex items-center justify-center text-[#004a8e] font-black uppercase shrink-0">
-                          {p.nombreCompleto.charAt(0)}
-                        </div>
+                        <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center text-ypfb-blue font-bold uppercase shrink-0 font-display text-xs">{p.nombreCompleto.charAt(0)}</div>
                         <div>
-                          <p className="font-bold text-gray-900 text-sm leading-tight">{p.nombreCompleto}</p>
-                          <p className="text-[11px] font-mono text-gray-500 uppercase">CI: {p.ci}</p>
+                          <p className="font-bold text-slate-900 text-xs leading-tight font-sans">{p.nombreCompleto}</p>
+                          <p className="text-[10px] font-mono text-slate-500 tracking-tight">CI: {p.ci}</p>
                         </div>
                       </div>
-                      {activo && <Check size={18} className="text-[#004a8e] shrink-0" />}
+                      {activo && <Check size={16} className="text-ypfb-blue shrink-0" />}
                     </button>
                   );
                 })
@@ -540,32 +328,20 @@ export function VehiculoForm() {
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }
 
-/* --- helpers de estilo --- */
-
-function inputClass(error?: { message?: string }) {
-  return `w-full bg-gray-50 border rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-[#f5d000]/20 transition-all ${
-    error ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-[#f5d000]"
-  }`;
+function inputClass(error?: { message?: string }, hasIcon: boolean = false) {
+  return `w-full bg-slate-50 border rounded-xl p-2.5 text-sm font-sans outline-none focus:ring-2 focus:ring-ypfb-blue/20 transition-all ${error ? "border-red-300 focus:border-red-400" : "border-slate-200 focus:border-ypfb-blue"} ${hasIcon ? "pl-9" : ""}`;
 }
 
-function Campo({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
+function Campo({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-xs font-bold text-gray-500 mb-1 block">{label}</label>
+      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block font-sans">{label}</label>
       {children}
-      {error && <p className="mt-1 text-[11px] font-semibold text-red-500">{error}</p>}
+      {error && <p className="mt-1 text-[10px] font-semibold text-red-500 font-sans">{error}</p>}
     </div>
   );
 }

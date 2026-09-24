@@ -1,3 +1,19 @@
 @import "tailwindcss";
-@import "./theme.css";
 
+@theme {
+  --color-ypfb-blue: #0033A0;
+  --color-ypfb-darkblue: #002060;
+  --color-ypfb-navy: #0B1B3D;
+  --color-ypfb-red: #E30613;
+  --color-ypfb-darkred: #B8040F;
+  --color-ypfb-yellow: #FFC72C;
+  --color-ypfb-gold: #E5A900;
+
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+}
+
+@utility shadow-card {
+  box-shadow: 0 4px 20px -2px rgba(0, 51, 160, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+}

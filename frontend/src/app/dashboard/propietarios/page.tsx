@@ -1,164 +1,199 @@
-"use client";
-//VISTA DE PROPIETARIOS PARA LA APLICACIÓN DE CONTROL DE GASOLINERAS
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { ShieldCheck, UserPlus, Search, Smartphone, MapPin, UserCheck } from "lucide-react";
+'use client';
 
-interface Propietario {
-  ci: string;
-  nombreCompleto: string;
-  celular: string;
-  comunidad: string;
-}
+import { useState } from "react";
+import Link from "next/link";
+import { UserPlus, Search, Smartphone, MapPin, Users, ChevronLeft, ChevronRight, Edit, X, ShieldCheck } from "lucide-react";
+import { usePropietarios } from "@/hooks/usePropietarios";
+import { Propietario } from "@/types/propietario";
 
 export default function PropietariosPage() {
-  const [propietarios, setPropietarios] = useState<Propietario[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const {
+    loading,
+    searchTerm,
+    handleSearch,
+    currentData,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totalFiltrados,
+    startIndex,
+    itemsPerPage,
+    toggleEstado,
+    actualizarPropietario
+  } = usePropietarios(12);
 
-  useEffect(() => {
-    const fetchPropietarios = async () => {
-      try {
-        const token = localStorage.getItem("token");
+  const [propEdit, setPropEdit] = useState<Propietario | null>(null);
+  const [editForm, setEditForm] = useState({ nombre: "", apellidoPaterno: "", apellidoMaterno: "", celular: "" });
 
-        const response = await fetch("http://localhost:8080/api/propietarios", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          }
-        });
+  function getInitials(name: string) {
+    if (!name) return "U";
+    const parts = name.split(" ");
+    return parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}`.toUpperCase() : name.substring(0, 2).toUpperCase();
+  }
 
-        if (!response.ok) {
-          throw new Error("Error al obtener la lista de propietarios");
-        }
+  const abrirEdicion = (p: Propietario) => {
+    setEditForm({
+      nombre: p.nombre || "",
+      apellidoPaterno: p.apellidoPaterno || "",
+      apellidoMaterno: p.apellidoMaterno || "",
+      celular: p.celular || ""
+    });
+    setPropEdit(p);
+  };
 
-        const data = await response.json();
-        setPropietarios(data);
-      } catch (err) {
-        console.error("Hubo un problema con la petición GET:", err);
-        setError("No se pudieron cargar los datos.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPropietarios();
-  }, []);
-
-  const filtrados = propietarios.filter((p) => {
-    const termino = searchTerm.toLowerCase();
-    return (
-      p.nombreCompleto?.toLowerCase().includes(termino) ||
-      p.ci?.includes(searchTerm) ||
-      p.comunidad?.toLowerCase().includes(termino)
-    );
-  });
+  const handleGuardarEdicion = async () => {
+    if (!editForm.nombre || !editForm.apellidoPaterno) return;
+    const exito = await actualizarPropietario(propEdit!.ci, editForm);
+    if (exito) setPropEdit(null);
+  };
 
   return (
-     <section className="min-h-screen bg-gray-50 p-4 sm:p-8 font-sans antialiased">
-      <div className="max-w-7xl mx-auto space-y-6">
-
-        {/* cabecera principal con titulo y boton */}
-        <header className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4">
-            <div className="bg-[#004a8e] p-3 rounded-xl shadow-lg">
-              <ShieldCheck className="text-white" size={28} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-[#004a8e] uppercase tracking-tight">Propietarios</h1>
-              <p className="text-gray-500 text-sm font-medium">Gestiona los registros de propietarios</p>
-            </div>
-          </div>
-
-          <Link
-            href="/dashboard/propietarios/nuevo"
-            className="flex items-center gap-2 bg-[#f5d000] hover:bg-[#e6c200] text-[#004a8e] px-6 py-3 rounded-xl font-black transition-all shadow-md active:scale-95 uppercase tracking-wider text-sm"
-          >
-            <UserPlus size={20} /> Nuevo Propietario
-          </Link>
-        </header>
-
-        {/* buscador */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input
-              type="text"
-              placeholder="Buscar por nombre, CI o comunidad..."
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#f5d000] outline-none transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <span className="text-xs font-extrabold uppercase tracking-widest text-ypfb-red font-sans">GESTIÓN DE CLIENTES</span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-display">Propietarios Registrados</h1>
         </div>
 
-        {/* tabla principal de propietarios */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-4 text-xs font-bold text-[#004a8e] uppercase tracking-wider">Propietario</th>
-                  <th className="px-6 py-4 text-xs font-bold text-[#004a8e] uppercase tracking-wider">CI</th>
-                  <th className="px-6 py-4 text-xs font-bold text-[#004a8e] uppercase tracking-wider">Celular</th>
-                  <th className="px-6 py-4 text-xs font-bold text-[#004a8e] uppercase tracking-wider">Comunidad</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {loading ? (
-                  <tr>
-                    <td colSpan={4} className="text-center py-10 font-bold text-gray-400">Cargando propietarios...</td>
-                  </tr>
-                ) : error ? (
-                  <tr>
-                    <td colSpan={4} className="text-center py-10 font-bold text-red-500">{error}</td>
-                  </tr>
-                ) : filtrados.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="text-center py-16">
-                      <div className="flex flex-col items-center gap-2 opacity-40">
-                        <UserCheck size={48} className="text-[#004a8e]" />
-                        <p className="font-black uppercase tracking-widest text-sm text-[#004a8e]">No hay propietarios registrados</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filtrados.map((prop) => (
-                    <tr key={prop.ci} className="hover:bg-blue-50/30 transition-colors group">
-                      <td className="px-6 py-4 whitespace-nowrap align-middle">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center text-[#004a8e] font-black group-hover:bg-[#004a8e] group-hover:text-white transition-all shadow-sm uppercase">
-                            {prop.nombreCompleto ? prop.nombreCompleto.charAt(0) : "U"}
-                          </div>
-                          <p className="font-bold text-gray-900 leading-tight">{prop.nombreCompleto}</p>
-                        </div>
-                      </td>
+        <Link
+          href="/dashboard/propietarios/nuevo"
+          className="px-5 py-3 bg-ypfb-blue hover:bg-ypfb-darkblue text-white font-bold text-xs rounded-xl shadow-md transition flex items-center space-x-2 shrink-0 font-sans"
+        >
+          <UserPlus size={16} />
+          <span>REGISTRAR PROPIETARIO</span>
+        </Link>
+      </div>
 
-                      <td className="px-6 py-4 whitespace-nowrap align-middle">
-                        <span className="text-xs font-mono font-semibold text-gray-700">{prop.ci}</span>
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap align-middle">
-                        <span className="flex items-center gap-1.5 text-xs font-medium text-gray-600">
-                          <Smartphone size={12} className="text-[#004a8e]" /> {prop.celular}
-                        </span>
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap align-middle">
-                        <span className="inline-flex items-center gap-1.5 bg-blue-50 text-[#004a8e] px-3 py-1 rounded text-[10px] font-black uppercase border border-blue-100">
-                          <MapPin size={12} /> {prop.comunidad}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3.5 top-3.5 text-slate-400" size={16} />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={handleSearch}
+            placeholder="Buscar por nombre o CI..."
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-sans focus:outline-none focus:ring-2 focus:ring-ypfb-blue"
+          />
         </div>
       </div>
-    </section>
+
+      <div className="flex flex-col h-full space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+          {loading ? (
+             <div className="col-span-full py-20 text-center text-slate-400 font-bold uppercase text-sm">Cargando...</div>
+          ) : currentData.map((prop) => {
+            const inactivo = prop.estado === "INACTIVO";
+            return (
+              <div
+                key={prop.idPropietario}
+                className={`p-5 rounded-2xl border transition flex flex-col justify-between shadow-card ${
+                  inactivo ? "bg-slate-50 border-slate-200 opacity-60" : "bg-white border-slate-200 hover:border-ypfb-blue"
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-10 h-10 rounded-xl font-bold flex items-center justify-center text-sm shrink-0 font-display ${
+                        inactivo ? "bg-slate-300 text-slate-600" : "bg-slate-100 text-ypfb-blue"
+                      }`}>
+                        {getInitials(prop.nombreCompleto)}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-slate-900 text-sm truncate font-sans" title={prop.nombreCompleto}>{prop.nombreCompleto}</h3>
+                        <span className="text-[11px] text-slate-400 font-mono tracking-tight">CI: {prop.ci}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-xs text-slate-600 font-sans mb-4">
+                    <div className="flex justify-between items-center">
+                      <span className="flex items-center space-x-1.5 text-slate-400"><Smartphone size={14} className="text-ypfb-blue" /><span>Celular:</span></span>
+                      <span className="font-semibold font-mono tracking-tight">{prop.celular || "No registrado"}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="flex items-center space-x-1.5 text-slate-400"><MapPin size={14} className="text-ypfb-blue" /><span>Comunidad:</span></span>
+                      <span className="font-semibold truncate max-w-[120px] text-right font-sans" title={prop.comunidad}>{prop.comunidad}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200/60 pt-4 flex items-center justify-between mt-4">
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => toggleEstado(prop.ci, prop.estado || "ACTIVO")} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${inactivo ? "bg-slate-300" : "bg-ypfb-blue"}`}>
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${inactivo ? "translate-x-1" : "translate-x-6"}`} />
+                    </button>
+                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded tracking-wider ${inactivo ? "bg-slate-200 text-slate-500" : "bg-blue-50 text-ypfb-blue"}`}>
+                      {prop.estado || "ACTIVO"}
+                    </span>
+                  </div>
+
+                  <button onClick={() => abrirEdicion(prop)} disabled={inactivo} className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-md hover:bg-slate-200 transition-colors uppercase disabled:opacity-50">
+                    <Edit size={12} /> Editar
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center space-x-2 pt-4 font-mono">
+            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition"><ChevronLeft size={18} /></button>
+            <div className="flex space-x-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button key={page} onClick={() => setCurrentPage(page)} className={`w-9 h-9 rounded-lg text-sm font-bold transition ${currentPage === page ? "bg-ypfb-blue text-white shadow-md" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>{page}</button>
+              ))}
+            </div>
+            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition"><ChevronRight size={18} /></button>
+          </div>
+        )}
+      </div>
+
+      {propEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="bg-ypfb-navy p-5 text-white flex justify-between items-center">
+              <h2 className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 font-display">
+                <Edit size={18} className="text-ypfb-yellow" /> Editar Propietario
+              </h2>
+              <button onClick={() => setPropEdit(null)} className="hover:bg-white/10 p-1.5 rounded-lg transition-colors"><X size={20} /></button>
+            </div>
+
+            <div className="p-6 font-sans">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">Nombre</label>
+                  <input value={editForm.nombre} onChange={(e) => setEditForm({...editForm, nombre: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-ypfb-blue" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">Apellido Paterno</label>
+                  <input value={editForm.apellidoPaterno} onChange={(e) => setEditForm({...editForm, apellidoPaterno: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-ypfb-blue" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">Apellido Materno</label>
+                  <input value={editForm.apellidoMaterno} onChange={(e) => setEditForm({...editForm, apellidoMaterno: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-ypfb-blue" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">Celular</label>
+                  <input value={editForm.celular} onChange={(e) => setEditForm({...editForm, celular: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-mono tracking-widest font-semibold outline-none focus:border-ypfb-blue" />
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-start gap-3 mt-2">
+                <ShieldCheck size={18} className="text-ypfb-blue shrink-0 mt-0.5" />
+                <p className="text-[11px] text-ypfb-blue font-medium leading-relaxed">
+                  Por seguridad y regulaciones, el <strong className="font-bold">CI</strong> y la <strong className="font-bold">Comunidad</strong> están bloqueados para modificaciones directas.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 px-6 py-4 flex justify-end gap-3 border-t border-slate-100">
+              <button onClick={() => setPropEdit(null)} className="px-5 py-2.5 rounded-xl font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 transition-colors text-xs uppercase tracking-wider">Cancelar</button>
+              <button onClick={handleGuardarEdicion} className="px-5 py-2.5 bg-ypfb-blue text-white rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-ypfb-darkblue transition-colors shadow-md">Guardar Cambios</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

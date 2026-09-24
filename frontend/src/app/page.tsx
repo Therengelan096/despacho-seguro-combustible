@@ -1,182 +1,154 @@
 'use client';
-// INTERFAZ DE INICIO DE SESIÓN PARA LA APLICACIÓN DE CONTROL DE GASOLINERAS
+
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8080/api/auth/login', {
+      const data = await apiFetch('/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: username,
-          password: password
-        }),
+        body: JSON.stringify({ username, password }),
       });
 
-      if (!response.ok) {
-        throw new Error('Credenciales incorrectas');
+      localStorage.setItem('gascontrol_user', username);
+      localStorage.setItem('gascontrol_rol', data.rol || 'OPERADOR');
+
+      toast.success('Sesión iniciada correctamente.');
+
+      // Si es admin va a sus métricas, si es trabajador va a su terminal
+      if (data.rol === 'ADMINISTRADOR') {
+        router.push('/dashboard');
+      } else {
+        router.push('/dashboard/bomba');
       }
 
-      const data = await response.json();
-      
-      localStorage.setItem('token', data.token); 
-      window.location.href = '/dashboard'; 
-
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      alert('Error al iniciar sesión: ' + errorMessage);
+    } catch (error: any) {
+      toast.error(error.message || 'Error al iniciar sesión');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <main style={{ display: 'flex', height: '100vh', width: '100vw', margin: 0, overflow: 'hidden', fontFamily: 'sans-serif' }}>
-      
-      {/* Columna Izquierda: Panel 3D e Ilustrativo de Gasolinera */}
-      <div style={{ 
-        flex: 0.8, // Un poco más ancha para destacar la ilustración
-        background: 'linear-gradient(135deg, #ff7b00 0%, #e65100 100%)', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        position: 'relative',
-        padding: '40px',
-        overflow: 'hidden'
-      }}>
-        
-        {/* Círculos de brillo de fondo para dar profundidad 3D */}
-        <div style={{
-          position: 'absolute',
-          width: '400px',
-          height: '400px',
-          background: 'rgba(255, 255, 255, 0.1)',
-          borderRadius: '50%',
-          top: '-50px',
-          left: '-50px',
-          zIndex: 1
-        }}></div>
+    <main className="min-h-screen w-full bg-[#001427] flex items-center justify-center p-4 md:p-6 lg:p-8 font-sans overflow-y-auto">
+      <div className="w-full max-w-5xl bg-[#001D3D] rounded-3xl shadow-2xl overflow-hidden border border-blue-900/40 flex flex-col lg:flex-row min-h-[640px]">
 
-        {/* Logo superior izquierdo */}
-        <div style={{ position: 'absolute', top: '30px', left: '40px', color: '#fff', fontWeight: 'bold', fontSize: '22px', zIndex: 2, display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span>⛽</span> GasControl
-        </div>
+        <div className="w-full lg:w-7/12 relative flex flex-col justify-between p-6 md:p-8 lg:p-12 min-h-[250px] sm:min-h-[300px] lg:min-h-full">
+          <img
+            src="https://www.ypfb.gob.bo/sites/default/files/2026-09/WhatsApp%20Image%202026-09-17%20at%2011.38.10%20%283%29.jpeg"
+            alt="Operaciones YPFB"
+            className="absolute inset-0 w-full h-full object-cover z-0 filter brightness-90"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#001427] via-[#002855]/80 to-[#001D3D]/90 z-10"></div>
 
-        {/* Contenedor con efecto 3D y sombras flotantes */}
-        <div style={{ 
-          textAlign: 'center', 
-          color: '#fff', 
-          zIndex: 2,
-          transform: 'perspective(1000px) rotateY(-5deg) rotateX(5deg)', // Efecto 3D de inclinación
-          transition: 'transform 0.5s ease'
-        }}>
-          {/* Surtidor 3D grande con sombras profundas */}
-          <div style={{ 
-            fontSize: '450px', 
-            marginBottom: '15px',
-            filter: 'drop-shadow(0px 20px 30px rgba(0, 0, 0, 0.3)) drop-shadow(0px 5px 10px rgba(0, 0, 0, 0.2))',
-            transform: 'scale(1.1)'
-          }}>
-            ⛽
-          </div>
-
-        </div>
-      </div>
-
-      {/* Columna Derecha: Formulario de Acceso Limpio */}
-      <div style={{ 
-        flex: 1.5, 
-        display: 'flex', 
-        flexDirection: 'column', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        backgroundColor: '#ffffff',
-        padding: '40px'
-      }}>
-        <div style={{ width: '100%', maxWidth: '380px' }}>
-          
-          <div style={{ textAlign: 'center', marginBottom: '35px' }}>
-            <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111', margin: '0 0 8px 0' }}>Bienvenido</h1>
-            <p style={{ color: '#666', fontSize: '14px', margin: 0 }}>Ingresa tus credenciales para continuar.</p>
-          </div>
-
-          <form onSubmit={handleLogin}>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#e65100', marginBottom: '8px', textTransform: 'uppercase' }}>
-                Usuario
-              </label>
-              <input 
-                type="text" 
-                value={username} 
-                onChange={(e) => setUsername(e.target.value)} 
-                placeholder="Ej. admin_surtidor" 
-                required
-                style={{ 
-                  width: '100%', 
-                  padding: '14px 16px', 
-                  fontSize: '15px', 
-                  border: '1px solid #ddd', 
-                  borderRadius: '8px',
-                  outline: 'none',
-                  backgroundColor: '#f9f9f9',
-                  boxSizing: 'border-box'
-                }}
-              />
+          <div className="relative z-20 flex flex-col justify-between h-full space-y-4 lg:space-y-6">
+            <div className="flex items-center space-x-3.5">
+              <div className="w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-2xl shadow-lg p-1.5 flex items-center justify-center relative shrink-0">
+                <img
+                  src="https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ed/YPFB_Logo.svg/1280px-YPFB_Logo.svg.png"
+                  alt="Logo YPFB"
+                  className="w-full h-full object-contain p-1"
+                />
+              </div>
+              <div>
+                <div className="flex items-center space-x-1">
+                  <span className="text-white font-extrabold text-lg lg:text-xl tracking-tight">YPFB</span>
+                  <span className="text-amber-400 font-extrabold text-lg lg:text-xl">GasControl</span>
+                </div>
+                <p className="text-blue-200/90 text-[9px] lg:text-[10px] font-bold uppercase tracking-wider">
+                  SISTEMA DE CONTROL DE SURTIDORES
+                </p>
+              </div>
             </div>
 
-            <div style={{ marginBottom: '30px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#e65100', marginBottom: '8px', textTransform: 'uppercase' }}>
-                Contraseña
-              </label>
-              <input 
-                type="password" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                placeholder="••••••••" 
-                required
-                style={{ 
-                  width: '100%', 
-                  padding: '14px 16px', 
-                  fontSize: '15px', 
-                  border: '1px solid #ddd', 
-                  borderRadius: '8px',
-                  outline: 'none',
-                  backgroundColor: '#f9f9f9',
-                  boxSizing: 'border-box'
-                }}
-              />
+            <div className="space-y-3 lg:space-y-4 mt-auto">
+              <div className="inline-flex items-center space-x-2 bg-amber-400/10 border border-amber-400/30 px-3 py-1 rounded-full backdrop-blur-md w-max">
+                <span className="text-amber-300 text-[10px] lg:text-xs font-semibold tracking-wide">Red YPFB Corporativa Bolivia</span>
+              </div>
+              <h2 className="text-white text-xl md:text-2xl lg:text-3xl font-extrabold leading-tight tracking-tight">
+                Gestión inteligente para estaciones de servicio.
+              </h2>
+            </div>
+            <p className="text-[10px] lg:text-[11px] text-blue-300/60 font-medium hidden sm:block">
+              © 2026 YPFB Corporación. Todos los derechos reservados.
+            </p>
+          </div>
+        </div>
+
+        <div className="w-full lg:w-5/12 bg-[#001833] p-6 md:p-8 lg:p-12 flex flex-col justify-center border-t lg:border-t-0 lg:border-l border-blue-900/50 z-20">
+          <div className="w-full max-w-sm mx-auto space-y-5 lg:space-y-6">
+            <div>
+              <h3 className="text-lg lg:text-xl font-bold text-white">Iniciar Sesión</h3>
+              <p className="text-[11px] lg:text-xs text-blue-300/80 mt-1">Ingresa tus credenciales autorizadas para acceder al panel.</p>
             </div>
 
-            <button 
-              type="submit" 
-              style={{ 
-                width: '100%', 
-                padding: '14px', 
-                backgroundColor: '#ff6b00', 
-                color: '#fff', 
-                fontSize: '16px',
-                fontWeight: 'bold',
-                border: 'none', 
-                borderRadius: '8px', 
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(255, 107, 0, 0.4)',
-                transition: 'background 0.2s'
-              }}
-            >
-              Iniciar Sesión
-            </button>
-          </form>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-[10px] lg:text-xs font-semibold text-blue-200 uppercase tracking-wider mb-1.5">Usuario</label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="admin_surtidor"
+                  disabled={loading}
+                  required
+                  className="w-full px-4 py-3 bg-[#000F1F] text-white text-sm rounded-xl border border-blue-800/80 focus:ring-2 focus:ring-amber-400 outline-none transition-all placeholder-gray-500"
+                />
+              </div>
 
+              <div>
+                <label className="block text-[10px] lg:text-xs font-semibold text-blue-200 uppercase tracking-wider mb-1.5">Contraseña</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    disabled={loading}
+                    required
+                    className="w-full px-4 py-3 pr-12 bg-[#000F1F] text-white text-sm rounded-xl border border-blue-800/80 focus:ring-2 focus:ring-amber-400 outline-none transition-all placeholder-gray-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    disabled={loading}
+                    className="absolute inset-y-0 right-0 flex items-center px-4 text-blue-400 hover:text-amber-400 transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-[#001427] font-extrabold rounded-xl shadow-lg transition-all duration-200 text-xs tracking-wider uppercase mt-4 disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" /> Verificando...
+                  </>
+                ) : (
+                  'INGRESAR AL SISTEMA'
+                )}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
-
     </main>
   );
 }
