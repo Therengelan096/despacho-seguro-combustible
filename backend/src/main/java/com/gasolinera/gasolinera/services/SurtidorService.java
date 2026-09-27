@@ -77,10 +77,30 @@ public class SurtidorService {
         Vehiculo vehiculo = vehiculoRepository.findByIdNfc(request.uid())
                 .orElseThrow(() -> new IllegalArgumentException("Error: Vehículo no encontrado para registrar despacho."));
 
+        if (vehiculo.getEstado() != EstadoGeneral.ACTIVO
+                || vehiculo.getPropietario().getEstado() != EstadoGeneral.ACTIVO) {
+            throw new SurtidorNoAutorizadoException("El vehículo o propietario no está activo");
+        }
+
+        Comunidad comunidadActiva = turnoSurtidorService.obtenerComunidadEnTurno();
+        if (comunidadActiva != vehiculo.getPropietario().getComunidad()) {
+            throw new SurtidorNoAutorizadoException("Fuera de turno. Hoy corresponde exclusivamente a: " + comunidadActiva.name());
+        }
+
         double cupoMaximo = vehiculo.getTipo().name().equals("AUTOMOVIL") ? 40.0 : 20.0;
 
         if(request.litros() > cupoMaximo) {
             throw new IllegalArgumentException("Anomalía detectada: Los litros reportados superan la capacidad física permitida del vehículo.");
+        }
+
+        LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime inicioSemana = ahora.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).truncatedTo(ChronoUnit.DAYS);
+        LocalDateTime finSemana = inicioSemana.plusDays(7).minusNanos(1);
+        Double litrosConsumidos = historialRepository.sumarLitrosPorVehiculoEnRango(vehiculo.getIdVehiculo(), inicioSemana, finSemana);
+        double cupoDisponible = cupoMaximo - litrosConsumidos;
+
+        if (request.litros() > cupoDisponible) {
+            throw new IllegalArgumentException("El despacho supera el cupo semanal disponible de " + cupoDisponible + "L.");
         }
 
         HistorialDespacho historial = HistorialDespacho.builder()
