@@ -38,7 +38,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/surtidor/**").permitAll()
                         .requestMatchers("/api/visor/**").permitAll()
-                        .requestMatchers("/api/lector/escanear").permitAll()
+                        .requestMatchers("/api/lector/escanear", "/api/lector/estado").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

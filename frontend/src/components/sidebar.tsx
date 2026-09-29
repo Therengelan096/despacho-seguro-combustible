@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Fuel, History, Car, Users, LogOut, ChevronLeft, ChevronRight, Menu, X, LayoutDashboard } from 'lucide-react';
+import { Fuel, Car, Users, LogOut, ChevronLeft, ChevronRight, Menu, X, LayoutDashboard } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiFetch } from '@/lib/api';
 
@@ -13,15 +13,11 @@ export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  // Estados para el perfil del usuario
   const [nombreUsuario, setNombreUsuario] = useState('Usuario');
   const [rolUsuario, setRolUsuario] = useState('TRABAJADOR');
 
   useEffect(() => {
-    // Leemos los datos visuales que guardó el Login
     setNombreUsuario(localStorage.getItem('gascontrol_user') || 'Usuario');
-
-    // Obtenemos el rol (ADMINISTRADOR o TRABAJADOR)
     const rolGuardado = localStorage.getItem('gascontrol_rol') || 'TRABAJADOR';
     setRolUsuario(rolGuardado);
 
@@ -43,18 +39,15 @@ export default function Sidebar() {
     }
   };
 
-  // DEFINIMOS LOS MENÚS DINÁMICAMENTE SEGÚN EL ROL
-  const navItems = [];
+const navItems = [];
 
   if (rolUsuario === 'ADMINISTRADOR') {
     navItems.push(
       { id: 'dashboard', href: '/dashboard', icon: LayoutDashboard, label: 'MÉTRICAS' },
-      { id: 'historial', href: '/dashboard/historial', icon: History, label: 'HISTORIAL' },
       { id: 'vehiculos', href: '/dashboard/vehiculos', icon: Car, label: 'VEHÍCULOS' },
       { id: 'propietarios', href: '/dashboard/propietarios', icon: Users, label: 'PROPIETARIOS' }
     );
   } else {
-    // Es TRABAJADOR
     navItems.push(
       { id: 'bomba', href: '/dashboard/bomba', icon: Fuel, label: 'MONITOR CASETA' }
     );
@@ -114,8 +107,6 @@ export default function Sidebar() {
 
           <nav className="p-3 space-y-2 text-sm font-medium font-sans mt-2 overflow-hidden">
             {navItems.map((item) => {
-              // Si es la ruta raíz (/dashboard), solo se activa si la ruta exacta es esa.
-              // Si es una subruta, se activa si incluye la ruta.
               const active = item.href === '/dashboard'
                 ? pathname === '/dashboard'
                 : pathname.includes(item.href);

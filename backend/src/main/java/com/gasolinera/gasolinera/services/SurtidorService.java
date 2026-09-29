@@ -52,7 +52,7 @@ public class SurtidorService {
             throw new SurtidorNoAutorizadoException("El propietario del vehículo está suspendido");
         }
 
-        double cupoMaximo = vehiculo.getTipo().name().equals("AUTOMOVIL") ? 40.0 : 20.0;
+        double cupoMaximo = vehiculo.getTipo().getCupoMaximo();
 
         LocalDateTime ahora = LocalDateTime.now();
         LocalDateTime inicioSemana = ahora.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).truncatedTo(ChronoUnit.DAYS);
@@ -74,7 +74,7 @@ public class SurtidorService {
 
     @Transactional
     public Map<String, String> confirmarDespacho(DespachoRequestDTO request) {
-        Vehiculo vehiculo = vehiculoRepository.findByIdNfc(request.uid())
+        Vehiculo vehiculo = vehiculoRepository.findByIdNfcWithLock(request.uid())
                 .orElseThrow(() -> new IllegalArgumentException("Error: Vehículo no encontrado para registrar despacho."));
 
         if (vehiculo.getEstado() != EstadoGeneral.ACTIVO
@@ -87,7 +87,7 @@ public class SurtidorService {
             throw new SurtidorNoAutorizadoException("Fuera de turno. Hoy corresponde exclusivamente a: " + comunidadActiva.name());
         }
 
-        double cupoMaximo = vehiculo.getTipo().name().equals("AUTOMOVIL") ? 40.0 : 20.0;
+        double cupoMaximo = vehiculo.getTipo().getCupoMaximo();
 
         if(request.litros() > cupoMaximo) {
             throw new IllegalArgumentException("Anomalía detectada: Los litros reportados superan la capacidad física permitida del vehículo.");
@@ -96,6 +96,7 @@ public class SurtidorService {
         LocalDateTime ahora = LocalDateTime.now();
         LocalDateTime inicioSemana = ahora.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).truncatedTo(ChronoUnit.DAYS);
         LocalDateTime finSemana = inicioSemana.plusDays(7).minusNanos(1);
+
         Double litrosConsumidos = historialRepository.sumarLitrosPorVehiculoEnRango(vehiculo.getIdVehiculo(), inicioSemana, finSemana);
         double cupoDisponible = cupoMaximo - litrosConsumidos;
 
@@ -119,7 +120,7 @@ public class SurtidorService {
         Vehiculo vehiculo = vehiculoRepository.findByIdNfc(uid)
                 .orElseThrow(() -> new IllegalArgumentException("Tag NFC no registrado en el sistema."));
 
-        double cupoMaximo = vehiculo.getTipo().name().equals("AUTOMOVIL") ? 40.0 : 20.0;
+        double cupoMaximo = vehiculo.getTipo().getCupoMaximo();
 
         LocalDateTime ahora = LocalDateTime.now();
         LocalDateTime inicioSemana = ahora.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).truncatedTo(ChronoUnit.DAYS);

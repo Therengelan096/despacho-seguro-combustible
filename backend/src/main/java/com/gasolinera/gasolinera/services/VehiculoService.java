@@ -6,7 +6,6 @@ import com.gasolinera.gasolinera.dto.VehiculoUpdateDTO;
 import com.gasolinera.gasolinera.entities.Propietario;
 import com.gasolinera.gasolinera.entities.Vehiculo;
 import com.gasolinera.gasolinera.enums.EstadoGeneral;
-import com.gasolinera.gasolinera.enums.TipoVehiculo;
 import com.gasolinera.gasolinera.repositories.PropietarioRepository;
 import com.gasolinera.gasolinera.repositories.VehiculoRepository;
 import lombok.RequiredArgsConstructor;
@@ -112,7 +111,7 @@ public class VehiculoService {
 
     private VehiculoResponseDTO mapear(Vehiculo v) {
         String nombreProp = v.getPropietario().getNombre() + " " + v.getPropietario().getApellidoPaterno();
-        double limiteCupo = (v.getTipo() == TipoVehiculo.AUTOMOVIL) ? 40.0 : 20.0;
+        double limiteCupo = v.getTipo().getCupoMaximo();
 
         return new VehiculoResponseDTO(
                 v.getIdVehiculo(),

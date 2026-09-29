@@ -1,14 +1,8 @@
 "use client";
 
-import {
-  Wifi,
-  CheckCircle2,
-  AlertTriangle,
-  ShieldCheck,
-  XOctagon,
-} from "lucide-react";
+import { Wifi, CheckCircle2, AlertTriangle, ShieldCheck, XOctagon } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useBomba } from "@/hooks/useBomba";
 
 const VehicleViewer = dynamic(
@@ -18,56 +12,50 @@ const VehicleViewer = dynamic(
     loading: () => (
       <div className="h-64 w-full animate-pulse rounded-2xl bg-slate-100 md:h-80" />
     ),
-  },
+  }
 );
 
 export default function BombaPage() {
   const {
     posData,
-    scanning,
-    consultarTarjeta,
     procesando,
     confirmarDespacho,
     rechazarAlarma,
   } = useBomba();
+
   const [litros, setLitros] = useState("");
 
-  // Pantalla de Espera (Antes de escanear)
+  useEffect(() => {
+    if (posData?.litrosSolicitados) {
+      setLitros(posData.litrosSolicitados);
+    }
+  }, [posData]);
+
   if (!posData) {
     return (
       <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center bg-white rounded-3xl border-2 border-dashed border-slate-200 shadow-sm p-8 text-center font-sans">
-        <div
-          className={`relative flex h-32 w-32 items-center justify-center rounded-full mb-8 ${scanning ? "bg-ypfb-blue" : "bg-slate-100"}`}
-        >
-          <Wifi
-            size={64}
-            className={
-              scanning ? "text-ypfb-yellow animate-pulse" : "text-slate-300"
-            }
-          />
-          {scanning && (
-            <span className="absolute inset-0 rounded-full border-4 border-ypfb-yellow animate-ping opacity-20"></span>
-          )}
+        <div className="relative flex h-32 w-32 items-center justify-center rounded-full mb-8 bg-blue-50">
+          <Wifi size={64} className="text-ypfb-blue animate-pulse" />
+          <span className="absolute inset-0 rounded-full border-4 border-ypfb-blue animate-ping opacity-20"></span>
         </div>
         <h2 className="text-3xl font-black text-slate-800 font-display mb-2">
-          {scanning ? "Buscando Tarjeta NFC..." : "Terminal de Caseta"}
+          Monitoreo Automático
         </h2>
         <p className="text-slate-500 mb-10 text-lg">
-          Acerque el tag NFC del cliente al lector para verificar su identidad y
-          cupo.
+          Esperando conexión y escaneo físico desde el surtidor principal...
         </p>
-        <button
-          onClick={consultarTarjeta}
-          disabled={scanning}
-          className="px-10 py-5 bg-ypfb-yellow text-ypfb-navy hover:bg-ypfb-gold rounded-2xl font-black uppercase tracking-widest text-lg transition-all shadow-[0_8px_20px_-8px_rgba(255,199,44,0.6)] disabled:opacity-50"
-        >
-          {scanning ? "ESPERANDO LECTURA..." : "INICIAR ESCANEO NFC"}
-        </button>
+
+        <div className="flex items-center gap-3 bg-blue-50 text-ypfb-blue px-6 py-3 rounded-full font-bold uppercase tracking-widest text-sm border border-blue-100 shadow-sm">
+           <span className="relative flex h-3 w-3">
+             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ypfb-blue opacity-75"></span>
+             <span className="relative inline-flex rounded-full h-3 w-3 bg-ypfb-blue"></span>
+           </span>
+           Sistema en Línea y Escuchando
+        </div>
       </div>
     );
   }
 
-  // Cálculos para la barra de progreso
   const porcentajeConsumido = Math.min(
     100,
     (posData.litrosConsumidos / posData.cupoMaximo) * 100,
@@ -77,7 +65,6 @@ export default function BombaPage() {
 
   return (
     <div className="h-[calc(100vh-120px)] flex flex-col lg:flex-row gap-6 font-sans">
-      {/* PANEL IZQUIERDO: AUTO Y CUPO */}
       <div className="flex-1 bg-white rounded-3xl shadow-card border border-slate-200 p-8 flex flex-col items-center justify-center text-center">
         <VehicleViewer tipoVehiculo={posData.tipoVehiculo} />
         <span className="bg-slate-100 text-slate-500 font-bold px-4 py-1 rounded-full text-xs uppercase tracking-widest mb-2">
@@ -111,7 +98,6 @@ export default function BombaPage() {
         </div>
       </div>
 
-      {/* PANEL DERECHO: DATOS Y ACCIONES */}
       <div className="flex-1 bg-white rounded-3xl shadow-card border border-slate-200 p-8 flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between border-b border-slate-100 pb-6 mb-6">
@@ -214,7 +200,7 @@ export default function BombaPage() {
               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-5 rounded-2xl font-black text-xl tracking-wider uppercase transition-colors shadow-lg flex items-center justify-center gap-3 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ShieldCheck size={28} />{" "}
-              {procesando ? "REGISTRANDO..." : "Registrar despacho"}
+              {procesando ? "ENVIANDO PERMISO..." : "APROBAR Y LIBERAR BOMBA"}
             </button>
           </div>
 

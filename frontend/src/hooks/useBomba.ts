@@ -14,6 +14,7 @@ export interface PosData {
   litrosConsumidos: number;
   cupoDisponible: number;
   estadoTurno: string;
+  litrosSolicitados?: string;
 }
 
 function mensajeDeError(error: unknown, mensajePredeterminado: string) {
@@ -22,75 +23,40 @@ function mensajeDeError(error: unknown, mensajePredeterminado: string) {
 
 export function useBomba() {
   const [posData, setPosData] = useState<PosData | null>(null);
-  const [scanning, setScanning] = useState(false);
   const [procesando, setProcesando] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const consultarTarjeta = () => {
-    if (scanning) return;
-    setScanning(true);
-    setPosData(null);
-    let intentos = 0;
-
-    if (intervalRef.current) clearInterval(intervalRef.current);
-
-    intervalRef.current = setInterval(async () => {
-      intentos++;
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (posData || procesando) return;
       try {
         const dataLector = await apiFetch("/lector/ultimo");
-        const uid =
-          typeof dataLector === "string" ? dataLector : dataLector?.uid;
-
+        const uid = typeof dataLector === "string" ? dataLector : dataLector?.uid;
         if (uid) {
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          try {
-            const dataPos = await apiFetch(
-              `/surtidor/pos/${encodeURIComponent(uid)}`,
-            );
-            setPosData(dataPos);
-            showSuccess(
-              "Cliente Identificado",
-              "Verifique los datos con el conductor.",
-            );
-          } catch (err: unknown) {
-            showError(
-              mensajeDeError(err, "Tarjeta no registrada en el sistema."),
-            );
-          }
-          setScanning(false);
-          return;
+          const dataPos = await apiFetch(`/surtidor/pos/${encodeURIComponent(uid)}`);
+          setPosData({ ...dataPos, litrosSolicitados: dataLector.litros });
+          showSuccess("Autorización Solicitada", `El surtidor pide despachar ${dataLector.litros} Litros.`);
         }
-      } catch {}
-
-      if (intentos >= 15) {
-        setScanning(false);
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        showError(
-          "Tiempo de espera agotado. Acerque la tarjeta al lector NFC.",
-        );
-      }
+      } catch (e) {}
     }, 1500);
-  };
+    return () => clearInterval(interval);
+  }, [posData, procesando]);
 
   const limpiarConsulta = () => setPosData(null);
 
   const confirmarDespacho = async (litros: number) => {
     if (!posData || procesando) return false;
-
     try {
       setProcesando(true);
-      await apiFetch("/surtidor/confirmar", {
-        method: "POST",
-        body: JSON.stringify({ uid: posData.uid, litros }),
-      });
+      await apiFetch("/lector/aprobar", { method: "POST" });
       showSuccess(
-        "Despacho registrado",
-        `Se registraron ${litros} L para ${posData.placa}.`,
+        "Despacho Aprobado",
+        `Se autorizó la bomba física para despachar ${litros} L.`
       );
       limpiarConsulta();
       return true;
     } catch (err: unknown) {
-      showError(mensajeDeError(err, "No se pudo registrar el despacho."));
+      showError(mensajeDeError(err, "No se pudo autorizar el despacho."));
       return false;
     } finally {
       setProcesando(false);
@@ -100,9 +66,10 @@ export function useBomba() {
   const rechazarAlarma = async () => {
     const confirmado = await confirmAction(
       "¿Rechazar Cliente?",
-      "Se cancelará la operación y se registrará la alerta.",
+      "Se cancelará la operación y se registrará la alerta."
     );
     if (confirmado) {
+      await apiFetch("/lector/rechazar", { method: "POST" });
       showError("Operación Rechazada por el Operador");
       limpiarConsulta();
     }
@@ -112,14 +79,12 @@ export function useBomba() {
     () => () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     },
-    [],
+    []
   );
 
   return {
     posData,
-    scanning,
     procesando,
-    consultarTarjeta,
     limpiarConsulta,
     confirmarDespacho,
     rechazarAlarma,

@@ -1,4 +1,4 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+export const API_URL = "/api";
 
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   const config: RequestInit = {
@@ -12,7 +12,6 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 
   const response = await fetch(`${API_URL}${endpoint}`, config);
 
-  // INTERCEPTOR ANTI-PANTALLAZOS 403
   if (response.status === 401 || response.status === 403) {
     if (typeof window !== "undefined") {
       localStorage.removeItem("gascontrol_user");
@@ -28,5 +27,7 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   }
 
   if (response.status === 204) return null;
-  return response.json();
+
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 };
