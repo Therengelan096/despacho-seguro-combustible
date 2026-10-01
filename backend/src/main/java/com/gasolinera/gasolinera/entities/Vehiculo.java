@@ -4,6 +4,11 @@ import com.gasolinera.gasolinera.enums.EstadoGeneral;
 import com.gasolinera.gasolinera.enums.TipoVehiculo;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "vehiculos")
@@ -12,6 +17,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
 public class Vehiculo {
 
     @Id
@@ -38,4 +44,12 @@ public class Vehiculo {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_propietario", nullable = false)
     private Propietario propietario;
+
+    @CreatedDate
+    @Column(name = "fecha_creacion", nullable = false, updatable = false)
+    private LocalDateTime fechaCreacion;
+
+    @LastModifiedDate
+    @Column(name = "fecha_modificacion")
+    private LocalDateTime fechaModificacion;
 }

@@ -12,17 +12,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <header className="relative bg-white shadow-sm border-b border-gray-100 overflow-hidden min-h-[70px] flex items-center justify-between pl-16 lg:pl-6 pr-6 shrink-0">
             <div className="absolute inset-0 pointer-events-none z-0">
               <svg className="w-full h-full" viewBox="0 0 1200 120" preserveAspectRatio="none" fill="none">
-                <path d="M650 0 C 800 90, 1000 110, 1200 60 L 1200 0 Z" fill="#00529B" />
-                <path d="M550 0 C 750 120, 980 110, 1200 35 L 1200 0 Z" fill="#003366" fillOpacity="0.15" />
-                <path d="M580 0 C 760 110, 990 100, 1200 48" stroke="#E31E24" strokeWidth="8" strokeLinecap="round" fill="none" />
-                <path d="M570 0 C 750 110, 980 100, 1200 43" stroke="#D01017" strokeWidth="3" strokeLinecap="round" fill="none" />
+                <path d="M650 0 C 800 90, 1000 110, 1200 60 L 1200 0 Z" fill="#15803d" />
+                <path d="M550 0 C 750 120, 980 110, 1200 35 L 1200 0 Z" fill="#16a34a" fillOpacity="0.15" />
+                <path d="M580 0 C 760 110, 990 100, 1200 48" stroke="#facc15" strokeWidth="8" strokeLinecap="round" fill="none" />
+                <path d="M570 0 C 750 110, 980 100, 1200 43" stroke="#eab308" strokeWidth="3" strokeLinecap="round" fill="none" />
               </svg>
             </div>
 
             <div className="relative z-10 flex items-center justify-between w-full">
               <div className="flex items-center space-x-3">
-                <span className="bg-blue-50 text-[#00529B] font-semibold text-xs px-3 py-1.5 rounded-md border border-blue-100 tracking-wide shadow-sm font-sans">
-                  ESTACIÓN BERMEJO
+                <span className="bg-green-50 text-green-800 font-semibold text-xs px-3 py-1.5 rounded-md border border-green-200 tracking-wide shadow-sm font-sans">
+                  GAM INQUISIVI - CAJUATA / SIQUIMIRANI
                 </span>
               </div>
 
@@ -38,7 +38,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <Bell size={18} />
                   <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#E31E24]"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ea580c]"></span>
                   </span>
                 </button>
               </div>

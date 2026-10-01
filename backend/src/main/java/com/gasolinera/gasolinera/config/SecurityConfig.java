@@ -39,6 +39,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/surtidor/**").permitAll()
                         .requestMatchers("/api/visor/**").permitAll()
                         .requestMatchers("/api/lector/escanear", "/api/lector/estado").permitAll()
+                        .requestMatchers("/ws-surtidor/**").permitAll()
+                        .requestMatchers("/api/auditoria/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

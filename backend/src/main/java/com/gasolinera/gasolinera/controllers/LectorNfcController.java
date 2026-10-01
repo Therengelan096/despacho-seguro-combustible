@@ -5,6 +5,7 @@ import com.gasolinera.gasolinera.services.LectorNfcService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
@@ -15,10 +16,17 @@ import java.util.Map;
 public class LectorNfcController {
 
     private final LectorNfcService service;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @PostMapping("/escanear")
     public ResponseEntity<Void> recibirEscaneoDelHardware(@Valid @RequestBody NfcScanDTO request) {
         service.registrarEscaneo(request.uid(), request.litros());
+
+        messagingTemplate.convertAndSend("/topic/escaneos", (Object) Map.of(
+                "uid", request.uid(),
+                "litros", request.litros() != null ? request.litros() : "0"
+        ));
+
         return ResponseEntity.ok().build();
     }
 

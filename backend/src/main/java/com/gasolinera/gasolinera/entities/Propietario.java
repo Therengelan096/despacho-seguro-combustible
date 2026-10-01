@@ -4,6 +4,11 @@ import com.gasolinera.gasolinera.enums.Comunidad;
 import com.gasolinera.gasolinera.enums.EstadoGeneral;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "propietarios")
@@ -12,7 +17,9 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
 public class Propietario {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idPropietario;
@@ -39,4 +46,12 @@ public class Propietario {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 15)
     private EstadoGeneral estado;
+
+    @CreatedDate
+    @Column(name = "fecha_creacion", nullable = false, updatable = false)
+    private LocalDateTime fechaCreacion;
+
+    @LastModifiedDate
+    @Column(name = "fecha_modificacion")
+    private LocalDateTime fechaModificacion;
 }

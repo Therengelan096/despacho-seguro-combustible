@@ -42,18 +42,18 @@ export function PropietariosForm({ onSuccess, onCancel }: PropietariosFormProps)
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="w-full bg-white rounded-2xl shadow-card border border-slate-200 overflow-hidden">
-      <div className="bg-ypfb-blue px-6 py-5 flex items-center gap-4">
-        <div className="bg-ypfb-yellow p-2.5 rounded-xl shadow-lg shrink-0 text-ypfb-navy">
+      <div className="bg-green-800 px-6 py-5 flex items-center gap-4">
+        <div className="bg-amber-500 p-2.5 rounded-xl shadow-lg shrink-0 text-green-950">
           <UserPlus size={22} />
         </div>
         <div>
-          <p className="text-[10px] font-bold text-blue-200 uppercase tracking-widest font-sans">Nuevo registro</p>
+          <p className="text-[10px] font-bold text-green-200 uppercase tracking-widest font-sans">Nuevo registro</p>
           <h1 className="text-lg font-black text-white uppercase tracking-tight font-display">Propietario</h1>
         </div>
       </div>
 
       <div className="p-6">
-        <h2 className="text-ypfb-blue font-bold border-b border-slate-100 pb-2 mb-4 flex items-center gap-2 font-display text-sm">
+        <h2 className="text-green-800 font-bold border-b border-slate-100 pb-2 mb-4 flex items-center gap-2 font-display text-sm">
           <User size={16} /> Datos del propietario
         </h2>
 
@@ -83,7 +83,7 @@ export function PropietariosForm({ onSuccess, onCancel }: PropietariosFormProps)
               <div
                 onClick={() => setOpenSelect(!openSelect)}
                 className={`w-full bg-slate-50 border rounded-xl p-2.5 text-sm outline-none cursor-pointer flex justify-between items-center transition-all pl-9 ${
-                  errors.comunidad ? "border-red-300" : "border-slate-200 hover:border-ypfb-blue"
+                  errors.comunidad ? "border-red-300" : "border-slate-200 hover:border-green-700"
                 }`}
               >
                 <span className={comunidadActual ? "text-slate-800 font-semibold" : "text-slate-400"}>
@@ -105,8 +105,8 @@ export function PropietariosForm({ onSuccess, onCancel }: PropietariosFormProps)
                         }}
                         className={`px-4 py-2 text-sm cursor-pointer transition-colors ${
                           comunidadActual === item.value
-                            ? "bg-blue-50 text-ypfb-blue font-bold"
-                            : "text-slate-600 hover:bg-slate-50 hover:text-ypfb-blue"
+                            ? "bg-green-50 text-green-800 font-bold"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-green-800"
                         }`}
                       >
                         {item.label}
@@ -131,7 +131,7 @@ export function PropietariosForm({ onSuccess, onCancel }: PropietariosFormProps)
         <button
           type="submit"
           disabled={isSubmitting}
-          className="px-5 py-2 bg-ypfb-blue text-white rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-ypfb-darkblue transition-colors shadow-md disabled:opacity-60 disabled:cursor-not-allowed font-sans"
+          className="px-5 py-2 bg-green-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-green-800 transition-colors shadow-md disabled:opacity-60 disabled:cursor-not-allowed font-sans"
         >
           {isSubmitting ? "Guardando..." : "Guardar Propietario"}
         </button>
@@ -141,7 +141,7 @@ export function PropietariosForm({ onSuccess, onCancel }: PropietariosFormProps)
 }
 
 function inputClass(error?: { message?: string }, hasIcon: boolean = false) {
-  return `w-full bg-slate-50 border rounded-xl p-2.5 text-sm font-sans outline-none focus:ring-2 focus:ring-ypfb-blue/20 transition-all ${error ? "border-red-300 focus:border-red-400" : "border-slate-200 focus:border-ypfb-blue"} ${hasIcon ? "pl-9" : ""}`;
+  return `w-full bg-slate-50 border rounded-xl p-2.5 text-sm font-sans outline-none focus:ring-2 focus:ring-green-700/20 transition-all ${error ? "border-red-300 focus:border-red-400" : "border-slate-200 focus:border-green-700"} ${hasIcon ? "pl-9" : ""}`;
 }
 
 function Campo({ label, error, icon, children }: { label: string; error?: string; icon?: React.ReactNode; children: React.ReactNode }) {

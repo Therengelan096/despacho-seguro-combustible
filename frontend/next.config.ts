@@ -1,21 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["192.168.8.215"],
+  allowedDevOrigins: ["192.168.0.11"],
 
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'www.ypfb.gob.bo',
-      },
-      {
-        protocol: 'https',
-        hostname: 'thumb.wikimedia.org',
-      },
-      // Aquí pa lo deel AWS
-    ],
-  },
 
   async rewrites() {
     return [

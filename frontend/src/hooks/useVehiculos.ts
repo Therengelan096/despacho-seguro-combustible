@@ -5,6 +5,8 @@ import { apiFetch } from "@/lib/api";
 import { Vehiculo } from "@/types/vehiculo";
 import { Propietario } from "@/types/propietario";
 import { showSuccess, showError, confirmAction, promptPin } from "@/lib/alerts";
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 
 export function useVehiculos(itemsPerPage: number = 8) {
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
@@ -15,7 +17,6 @@ export function useVehiculos(itemsPerPage: number = 8) {
 
   const fetchVehiculos = async () => {
     try {
-      setLoading(true);
       const [dataVehiculos, dataPropietarios] = await Promise.all([
         apiFetch("/vehiculos"),
         apiFetch("/propietarios")
@@ -29,32 +30,39 @@ export function useVehiculos(itemsPerPage: number = 8) {
     }
   };
 
-  useEffect(() => { fetchVehiculos(); }, []);
+  useEffect(() => {
+    fetchVehiculos();
+
+    const client = new Client({
+      webSocketFactory: () => new SockJS('http://127.0.0.1:8080/ws-surtidor'),
+      onConnect: () => {
+        client.subscribe('/topic/vehiculos', () => {
+          fetchVehiculos();
+        });
+      }
+    });
+    client.activate();
+
+    return () => { client.deactivate(); };
+  }, []);
 
   const toggleEstado = async (idVehiculo: number, estadoActual: string) => {
     const accion = estadoActual === "ACTIVO" ? "desactivar" : "activar";
     const confirmado = await confirmAction(`¿${accion.toUpperCase()} VEHÍCULO?`, `El vehículo pasará a estado ${estadoActual === "ACTIVO" ? "INACTIVO" : "ACTIVO"}.`);
     if (!confirmado) return;
-
     try {
       await apiFetch(`/vehiculos/${idVehiculo}/baja`, { method: "PATCH" });
       showSuccess("Estado actualizado");
-      fetchVehiculos();
     } catch (err: any) {
       showError(err.message || "Error al actualizar estado");
     }
   };
 
   const cambiarPin = async (idVehiculo: number) => {
-    // AQUÍ REEMPLAZAMOS EL WINDOW.PROMPT POR NUESTRO SWEETALERT2
     const nuevoPin = await promptPin();
     if (!nuevoPin) return;
-
     try {
-      await apiFetch(`/vehiculos/${idVehiculo}/pin`, {
-        method: "PATCH",
-        body: JSON.stringify({ nuevoPin })
-      });
+      await apiFetch(`/vehiculos/${idVehiculo}/pin`, { method: "PATCH", body: JSON.stringify({ nuevoPin }) });
       showSuccess("PIN actualizado", "El PIN fue cambiado exitosamente.");
     } catch (err: any) {
       showError(err.message || "Error al actualizar PIN");
@@ -63,12 +71,8 @@ export function useVehiculos(itemsPerPage: number = 8) {
 
   const actualizarVehiculo = async (idVehiculo: number, payload: any) => {
     try {
-      await apiFetch(`/vehiculos/${idVehiculo}`, {
-        method: "PUT",
-        body: JSON.stringify(payload)
-      });
+      await apiFetch(`/vehiculos/${idVehiculo}`, { method: "PUT", body: JSON.stringify(payload) });
       showSuccess("Vehículo actualizado", "Los datos se guardaron correctamente.");
-      fetchVehiculos();
       return true;
     } catch (err: any) {
       showError(err.message || "Error al actualizar vehículo");
