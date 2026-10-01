@@ -26,7 +26,7 @@ export function usePropietarios(itemsPerPage: number = 12) {
     fetchPropietarios();
 
     const client = new Client({
-      webSocketFactory: () => new SockJS('http://127.0.0.1:8080/ws-surtidor'),
+      webSocketFactory: () => new SockJS(`http://${window.location.hostname}:8080/ws-surtidor`),
       onConnect: () => {
         client.subscribe('/topic/propietarios', () => {
           fetchPropietarios();

@@ -34,7 +34,7 @@ export function useVehiculos(itemsPerPage: number = 8) {
     fetchVehiculos();
 
     const client = new Client({
-      webSocketFactory: () => new SockJS('http://127.0.0.1:8080/ws-surtidor'),
+      webSocketFactory: () => new SockJS(`http://${window.location.hostname}:8080/ws-surtidor`),
       onConnect: () => {
         client.subscribe('/topic/vehiculos', () => {
           fetchVehiculos();

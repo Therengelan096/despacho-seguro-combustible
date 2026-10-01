@@ -29,7 +29,7 @@ export function useNfcScanner(setValue: any) {
     setScanning(true);
     setErrorNfc("");
 
-    const socketUrl = 'http://127.0.0.1:8080/ws-surtidor';
+    const socketUrl = `http://${window.location.hostname}:8080/ws-surtidor`;
     const client = new Client({
       webSocketFactory: () => new SockJS(socketUrl),
       onConnect: () => {
